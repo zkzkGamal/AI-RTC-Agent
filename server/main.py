@@ -60,14 +60,17 @@ async def _consume_audio_track(track: MediaStreamTrack, session: Session) -> Non
                 break
 
             # av.AudioFrame → numpy array
-            # Shape: (channels, samples) for planar formats, (samples,) for packed
             audio = frame.to_ndarray()
 
-            # Extract mono channel
-            if audio.ndim > 1:
+            # Extract mono channel (Left channel) properly handling both planar and interleaved formats
+            channels = len(frame.layout.channels)
+            if "p" in frame.format.name:
+                # Planar format: shape is (channels, samples)
                 mono = audio[0]
             else:
-                mono = audio
+                # Interleaved format: shape is (1, samples * channels)
+                # Slice the first channel from the interleaved buffer
+                mono = audio[0][::channels]
 
             # Convert to int16 PCM based on the actual dtype
             if mono.dtype == np.float32 or mono.dtype == np.float64:

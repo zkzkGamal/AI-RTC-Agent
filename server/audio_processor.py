@@ -24,18 +24,24 @@ logger = logging.getLogger(__name__)
 
 # ─── Constants ──────────────────────────────────────────────────────
 # webrtcvad supports 8kHz, 16kHz, 32kHz, 48kHz
-# We use 16kHz for VAD (proven reliable), downsample from 48kHz
+# We use 16kHz for VAD (proven reliable), downsample from input rate
 VAD_SAMPLE_RATE = 16000
 VAD_FRAME_DURATION_MS = 30                                         # 30ms frames (matches VoiceModule)
 VAD_FRAME_BYTES = int(VAD_SAMPLE_RATE * VAD_FRAME_DURATION_MS / 1000) * 2  # 480 samples × 2 bytes = 960 bytes
+
+# VAD Hysteresis / Smoothing configuration
+VAD_WINDOW_SIZE = 10  # Sliding window size of last 10 frames (300ms)
+M_ONSET = 6           # Require at least 6/10 active frames to trigger speech onset
+M_OFFSET = 1          # Require <= 1/10 active frames to trigger silence/offset countdown
 
 
 class AudioSession:
     """
     Manages one user's audio stream:
-    - Receives raw PCM frames (48 kHz, 16-bit, mono)
+    - Receives raw PCM frames (e.g. 48 kHz, 16-bit, mono)
     - Downsamples to 16 kHz for VAD
-    - Detects speech / silence boundaries
+    - Uses a sliding window VAD state machine for robust speech detection
+    - Automatically includes pre-speech padding (look-back) and post-speech tail
     - Saves each utterance to utterances/<session_id>/utt_<timestamp>.wav
     - After saving, resets and continues listening (loop)
     """
@@ -48,16 +54,20 @@ class AudioSession:
         # VAD: aggressiveness 3 = most aggressive filtering (matches VoiceModule)
         self.vad = webrtcvad.Vad(3)
 
-        # ── Buffers ──
-        self._speech_buffer = bytearray()            # raw 48kHz PCM accumulated during speech
-        self._vad_residue = bytearray()              # leftover bytes for 16kHz VAD framing
+        # ── Input stream buffers (lockstep processing) ──
+        self._input_buffer_16k = bytearray()
+        self._input_buffer_raw = bytearray()
 
-        # ── State machine ──
+        # ── VAD State & Hysteresis Window ──
         self._is_speaking = False
-        self._silence_start: float | None = None
-        self._utterance_count = 0
+        self._silence_frames_count = 0
+        self._vad_window = []  # List of 0s and 1s representing recent frame speech flags
+        self._history_buffer_raw = bytearray()  # Ring buffer for pre-speech padding (look-back)
 
         # ── Output ──
+        self._speech_buffer = bytearray()            # Raw PCM accumulated during active speech
+        self._utterance_count = 0
+
         self._output_dir = os.path.join("utterances", session_id)
         os.makedirs(self._output_dir, exist_ok=True)
 
@@ -74,50 +84,77 @@ class AudioSession:
         if not pcm_bytes or len(pcm_bytes) < 2:
             return
 
-        # ── Downsample 48kHz → 16kHz for VAD ──
-        # Simple 3:1 decimation (prototype quality).
-        # TODO: for production, use scipy.signal.resample_poly(x, 1, 3) for proper anti-aliasing.
+        # Update sample rate dynamically if it changes
+        if self.sample_rate != sample_rate:
+            logger.info(f"[{self.session_id}] Dynamic sample rate updated: {self.sample_rate} -> {sample_rate}")
+            self.sample_rate = sample_rate
+
+        # ── Downsample from source_rate to 16kHz for VAD ──
         pcm_16k = self._decimate(pcm_bytes, sample_rate)
 
-        # ── Feed to VAD in 30ms chunks ──
-        self._vad_residue.extend(pcm_16k)
+        # ── Append to incoming stream buffers ──
+        self._input_buffer_16k.extend(pcm_16k)
+        self._input_buffer_raw.extend(pcm_bytes)
 
-        # Process all complete 30ms frames in the residue
-        while len(self._vad_residue) >= VAD_FRAME_BYTES:
-            chunk = bytes(self._vad_residue[:VAD_FRAME_BYTES])
-            del self._vad_residue[:VAD_FRAME_BYTES]
+        # Calculate exact ratio and raw block size for lockstep processing
+        ratio = sample_rate // VAD_SAMPLE_RATE
+        if ratio < 1:
+            ratio = 1
+        raw_frame_bytes = VAD_FRAME_BYTES * ratio
+
+        # ── Process lockstep VAD & raw frames in 30ms chunks ──
+        while len(self._input_buffer_16k) >= VAD_FRAME_BYTES and len(self._input_buffer_raw) >= raw_frame_bytes:
+            chunk_16k = bytes(self._input_buffer_16k[:VAD_FRAME_BYTES])
+            del self._input_buffer_16k[:VAD_FRAME_BYTES]
+
+            chunk_raw = bytes(self._input_buffer_raw[:raw_frame_bytes])
+            del self._input_buffer_raw[:raw_frame_bytes]
 
             try:
-                is_speech = self.vad.is_speech(chunk, VAD_SAMPLE_RATE)
+                is_speech = self.vad.is_speech(chunk_16k, VAD_SAMPLE_RATE)
             except Exception as e:
                 logger.warning(f"[{self.session_id}] VAD error: {e}")
                 is_speech = False
 
-            # ── State machine: speech/silence transitions ──
-            if is_speech:
-                if not self._is_speaking:
-                    self._is_speaking = True
-                    self._silence_start = None
-                    logger.info(f"[{self.session_id}] 🎙️  Speech started")
+            # Update VAD sliding window
+            self._vad_window.append(1 if is_speech else 0)
+            if len(self._vad_window) > VAD_WINDOW_SIZE:
+                self._vad_window.pop(0)
 
-                # Accumulate raw 48kHz audio
-                self._speech_buffer.extend(pcm_bytes)
-                self._silence_start = None
+            active_count = sum(self._vad_window)
+
+            # ── VAD Hysteresis State Machine ──
+            if not self._is_speaking:
+                # Accumulate pre-speech raw history (look-back padding)
+                self._history_buffer_raw.extend(chunk_raw)
+                max_history_bytes = raw_frame_bytes * VAD_WINDOW_SIZE
+                if len(self._history_buffer_raw) > max_history_bytes:
+                    del self._history_buffer_raw[:-max_history_bytes]
+
+                # Transition to Speaking if enough frames in sliding window are active
+                if active_count >= M_ONSET:
+                    self._is_speaking = True
+                    self._speech_buffer.extend(self._history_buffer_raw)
+                    self._history_buffer_raw.clear()
+                    self._silence_frames_count = 0
+                    logger.info(f"[{self.session_id}] 🎙️  Speech onset detected ({active_count}/{VAD_WINDOW_SIZE} active)")
 
             else:
-                if self._is_speaking:
-                    # Include some trailing silence for natural cutoff
-                    self._speech_buffer.extend(pcm_bytes)
+                # Actively speaking - append raw chunk
+                self._speech_buffer.extend(chunk_raw)
 
-                    if self._silence_start is None:
-                        self._silence_start = time.monotonic()
-                    else:
-                        elapsed = time.monotonic() - self._silence_start
-                        if elapsed >= self.silence_threshold:
-                            # ── Save and reset (continue loop) ──
-                            await self._save_utterance()
-                            self._reset_buffers()
-                            logger.info(f"[{self.session_id}] 🔇  Silence detected ({elapsed:.1f}s) → saved & reset, listening again...")
+                # Transition to silence countdown when window is mostly silent
+                if active_count <= M_OFFSET:
+                    self._silence_frames_count += 1
+                    elapsed = self._silence_frames_count * VAD_FRAME_DURATION_MS / 1000.0
+                    if elapsed >= self.silence_threshold:
+                        # Silence threshold reached - save utterance
+                        await self._save_utterance()
+                        self._reset_buffers()
+                        logger.info(f"[{self.session_id}] 🔇  Silence detected ({elapsed:.2f}s) → saved & reset")
+                else:
+                    # Voice activity detected, reset silence counter
+                    self._silence_frames_count = 0
 
     async def close(self) -> None:
         """Flush remaining audio on session end."""
@@ -132,7 +169,7 @@ class AudioSession:
     def _decimate(self, pcm_bytes: bytes, source_rate: int) -> bytes:
         """
         Downsample by keeping every Nth sample.
-        48kHz → 16kHz: N=3.  If source is already 16kHz, pass through.
+        48kHz → 16kHz: N=3. If source is already 16kHz, pass through.
         """
         ratio = source_rate // VAD_SAMPLE_RATE
         if ratio <= 1:
@@ -166,12 +203,14 @@ class AudioSession:
         with wave.open(filename, "wb") as wf:
             wf.setnchannels(1)
             wf.setsampwidth(2)                   # 16-bit
-            wf.setframerate(self.sample_rate)     # 48000 Hz
+            wf.setframerate(self.sample_rate)     # Dynamically matched sample rate
             wf.writeframes(data)
 
     def _reset_buffers(self) -> None:
         """Reset state to listen for the next utterance."""
         self._speech_buffer = bytearray()
-        self._vad_residue = bytearray()
         self._is_speaking = False
-        self._silence_start = None
+        self._silence_frames_count = 0
+        self._vad_window.clear()
+        self._history_buffer_raw.clear()
+

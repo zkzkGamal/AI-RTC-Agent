@@ -11,7 +11,7 @@ const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }]
  * @param {function} onStateChange  - called with (connectionState: string)
  * @returns {{ pc: RTCPeerConnection, stream: MediaStream, offer: RTCSessionDescriptionInit }}
  */
-export async function createConnection(onStateChange) {
+export async function createConnection(onStateChange, onMessage) {
   // 1. Get microphone stream (audio only)
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: {
@@ -25,6 +25,14 @@ export async function createConnection(onStateChange) {
 
   // 2. Create peer connection
   const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS })
+
+  // Create DataChannel for live transcript
+  const dc = pc.createDataChannel('transcript', { ordered: true })
+  dc.onmessage = (event) => {
+    onMessage?.(event.data)
+  }
+  dc.onopen = () => console.log("DataChannel ('transcript') opened")
+  dc.onclose = () => console.log("DataChannel ('transcript') closed")
 
   // 3. Monitor connection state
   pc.onconnectionstatechange = () => {
