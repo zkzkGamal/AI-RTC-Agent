@@ -1,182 +1,158 @@
-# Server: AI-RTC-Agent Backend
+# Server: AI-RTC-Agent Backend (Python & WebRTC)
 
-The Python backend handles WebRTC audio connections, voice activity detection, and utterance recording.
+A high-performance asynchronous Python backend responsible for managing real-time WebRTC audio connections, executing Voice Activity Detection (VAD) in lockstep, automatically segmenting active speech, transcribing audio via FastMCP Whisper STT, and streaming live transcripts back to the client over an out-of-band WebRTC `DataChannel`.
 
-## Purpose
+---
 
-The server is responsible for:
-- **WebRTC Signaling** – Manage peer connections and SDP exchange via aiohttp
-- **Audio Processing** – Capture and buffer user audio in real-time (48kHz mono PCM)
-- **Voice Activity Detection** – Detect speech/silence boundaries using `webrtcvad`
-- **Utterance Recording** – Save each speech segment as a WAV file per session
+## 🎯 Core Features & Capabilities
 
-> **Note:** STT, LLM, and TTS integrations are planned for future implementation via the `agent/` and `mcp/` modules.
+- **Real-Time WebRTC Media Consumption**: Receives incoming high-fidelity browser microphone audio streams using `aiortc` and aiohttp.
+- **Dual-Buffer Lockstep VAD Processing**:
+  - Eliminates slow-motion/half-speed audio distortions by synchronizing high-fidelity audio buffers (`_input_buffer_raw` at 48kHz) with downsampled VAD buffers (`_input_buffer_16k` at 16kHz) in perfect 30ms lockstep.
+  - Consumes exactly 30ms of VAD audio (`960` bytes) concurrently with 30ms of raw audio (`2880` bytes), preventing any frame overlap, duplicating, or sample shifting.
+- **Interleaved Stereo Slicing**: Cleans dual-channel interleaved audio tracks by applying precise slicing (`mono = audio[0][::channels]`), capturing a single clean channel at native pitch and playback speed.
+- **2.0s Silence-Triggered Automated Transcription**:
+  - The periodic background polling timer has been completely removed.
+  - Transcription is strictly triggered upon natural speech completion (detected when the candidate is silent for exactly **2.0 seconds** after active speech).
+  - Uses `webrtcvad` (aggressiveness mode 3) inside a sliding window state-machine for highly robust onset (speech start) and offset (speech end) detection.
+- **Out-of-band DataChannel Delivery**: Sends live transcriptions directly to the client via an active WebRTC `DataChannel` named `'transcript'`, bypassing standard HTTP request/response latency.
+- **Integrated FastMCP Client**: Automatically wraps accumulated speech segments in a valid `.wav` byte stream, encodes it to base64, establishes a Server-Sent Events (SSE) connection to the FastMCP Whisper server at `http://localhost:8005/sse`, invokes the `"stt"` tool, and decodes the result.
 
-## Architecture
+---
 
-### Audio Pipeline
-
-```
-Browser Microphone (48kHz Opus)
-  ↓
-WebRTC RTCPeerConnection (aiortc)
-  ↓
-Audio Frame Capture (av.AudioFrame → numpy int16)
-  ↓
-Downsample 48kHz → 16kHz (3:1 decimation)
-  ↓
-VAD Processing (webrtcvad, 30ms frames, mode 3)
-  ↓
-Speech Buffering (raw 48kHz PCM)
-  ↓
-Silence ≥ 1s detected → Save as WAV → Reset → Continue listening
-```
-
-### Session Lifecycle
-
-```
-GET /session              → Create session (UUID)
-POST /session/{id}/offer  → Exchange SDP, start audio consumer
-   ↓
-[Speech detected]         → Buffer audio
-[1s silence]              → Save utterance WAV, reset, keep listening
-[Speak again]             → Buffer new utterance (loop)
-   ↓
-[Connection closed]       → Flush remaining audio, cleanup session
-```
-
-## Project Structure
+## 📁 Project Structure
 
 ```
 server/
-├── main.py               # aiohttp server, WebRTC signaling, session management
-├── audio_processor.py    # AudioSession: VAD, buffering, WAV saving
-├── requirements.txt      # Production dependencies
-├── requirements-dev.txt  # Development dependencies
-├── utterances/           # Saved utterances (auto-created per session)
+├── tests/                 # Server frame-synchronization & VAD test suite
+│   ├── test_vad.py        # Validates VAD thresholds and downsampling decimation
+│   └── ...
+├── utterances/            # Session-isolated directory for saved WAV recordings
 │   └── <session_id>/
 │       ├── utt_<timestamp>.wav
 │       └── ...
-└── README.md             # This file
+├── audio_processor.py     # AudioSession: downsampling, lockstep VAD, MCP client
+├── main.py                # aiohttp signaling, CORS handler, and track consumer
+├── requirements.txt       # Production dependencies
+├── requirements-dev.txt   # Development dependencies (pytest, etc.)
+└── README.md              # This file
 ```
 
-## Quick Start
+---
+
+## 🚀 Quick Start
 
 ### 1. Install Dependencies
-
+Make sure you have **Python 3.10+** installed:
 ```bash
 cd server
 pip install -r requirements.txt
 ```
 
 ### 2. Start the Server
-
+Run the asynchronous server locally:
 ```bash
 python main.py
 ```
+By default, the server binds to `http://localhost:8080`.
 
-Server listens on `http://0.0.0.0:8080`
-
-## API Endpoints
-
-### GET `/session`
-
-Create a new voice session.
-
-**Response:**
-```json
-{
-  "session_id": "367763e3-c695-4f0d-b85d-10e3e9ce50b0"
-}
+### 3. Run Automated Backend Tests
+Ensure the lockstep VAD decimation and state machine remain perfectly calibrated:
+```bash
+pip install -r requirements-dev.txt
+python -m pytest tests/ -v
 ```
-
-### POST `/session/{session_id}/offer`
-
-Exchange WebRTC SDP offer/answer for an existing session.
-
-**Request:**
-```json
-{
-  "sdp": "v=0\no=...",
-  "type": "offer"
-}
-```
-
-**Response:**
-```json
-{
-  "sdp": "v=0\no=...",
-  "type": "answer"
-}
-```
-
-## Core Modules
-
-### `main.py` – WebRTC Server
-
-Handles session creation, SDP negotiation, and audio track consumption.
-
-**Key components:**
-- `Session` dataclass – Stores `RTCPeerConnection`, `AudioSession`, and background tasks
-- `_consume_audio_track()` – Async loop that receives `av.AudioFrame`, converts to PCM bytes, feeds to `AudioSession`
-- `_cleanup_session()` – Cancels tasks, closes peer connection, removes from registry
-
-**Audio frame conversion:**
-- Detects `int16` (from Opus/s16) vs `float32` (from flt/fltp) automatically
-- Uses `numpy.tobytes()` for fast, correct byte conversion
-- Extracts mono channel from planar audio
-
-### `audio_processor.py` – AudioSession
-
-Per-user audio processing with VAD and utterance saving.
-
-**Key class: `AudioSession`**
-- Receives raw 48kHz 16-bit mono PCM
-- Downsamples to 16kHz via 3:1 decimation for VAD
-- Uses `webrtcvad` (mode 3) with 30ms frames
-- State machine: `idle → speaking → silence → save → idle` (continuous loop)
-- Saves each utterance as WAV in `utterances/<session_id>/`
-
-**Configuration:**
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `sample_rate` | 48000 | Incoming audio sample rate |
-| `silence_threshold` | 1.0s | Silence duration before saving |
-| VAD mode | 3 | Aggressiveness (0-3, 3 = most aggressive) |
-| VAD frame | 30ms | Frame duration for VAD processing |
-
-## Utterance Output
-
-Utterances are saved in `utterances/<session_id>/`:
-
-```
-utterances/
-└── 367763e3-c695-4f0d-b85d-10e3e9ce50b0/
-    ├── utt_1778675221298.wav    # First utterance
-    ├── utt_1778675225412.wav    # Second utterance
-    └── ...                      # One WAV per speech segment
-```
-
-Each WAV file: 48kHz, 16-bit, mono PCM.
-
-## Dependencies
-
-| Package | Purpose |
-|---------|---------|
-| `aiortc` | WebRTC peer connections (SDP, ICE, media tracks) |
-| `aiohttp` | Async HTTP server |
-| `aiohttp-cors` | CORS middleware |
-| `webrtcvad` | Voice activity detection |
-| `numpy` | Audio array processing |
-
-## Related Documentation
-
-- [Main README](../README.md) – Project overview
-- [Client README](../client/README.md) – Frontend details
-- [Agent Module](../agent/README.md) – Future AI agent logic
-- [MCP Module](../mcp/README.md) – Future MCP server
+*Expected test output: 100% passing tests.*
 
 ---
 
-**Version:** 0.1.0  
+## ⚙️ Audio Pipeline Architecture
+
+```
+Opus-Encoded Mic Stream (Browser)
+       ↓ (WebRTC PeerConnection)
+av.AudioFrame (48kHz Interleaved Stereo/Mono)
+       ↓
+Interleaved Slicing: mono = audio[0][::channels] (main.py)
+       ↓
+AudioSession.add_frame(pcm_bytes) (audio_processor.py)
+       ├───> Downsample to 16kHz via 3:1 decimation
+       ├───> Append to VAD Buffer (16kHz) & Raw Buffer (48kHz)
+       ↓
+Lockstep processing loop (30ms chunks: 960 bytes VAD vs 2880 bytes Raw)
+       ├───> VAD onset (active frames >= 6/10) → speaking = True
+       ├───> VAD offset (active frames <= 1/10) → start 2.0s silence countdown
+       ↓
+Silence Threshold (2.0s) Reached
+       ├───> Wrap raw PCM bytes in a valid WAV header
+       ├───> Save WAV segment to disk in 'utterances/<session_id>/'
+       ├───> Encode WAV to Base64
+       ├───> Connect to FastMCP STT Server (localhost:8005/sse)
+       ├───> Call 'stt' tool → Retrieve Whisper text
+       └───> Send text over WebRTC 'transcript' DataChannel to browser
+```
+
+---
+
+## 🔌 API Endpoints & Protocols
+
+### 1. HTTP Endpoints
+
+#### `GET /session`
+Creates a brand-new audio session and allocates disk space.
+- **Response:**
+  ```json
+  {
+    "session_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+  }
+  ```
+
+#### `POST /session/{session_id}/offer`
+Negotiates WebRTC connection details by exchanging SDP envelopes.
+- **Request:**
+  ```json
+  {
+    "sdp": "v=0\no=...",
+    "type": "offer"
+  }
+  ```
+- **Response:**
+  ```json
+  {
+    "sdp": "v=0\no=...",
+    "type": "answer"
+  }
+  ```
+
+### 2. WebRTC Data Channel Protocol
+Upon connection, the server listens for data channel handshakes. If a channel named `'transcript'` is opened by the client, it is bound to the user's `AudioSession`. When Whisper transcriptions are completed, they are pushed over this channel:
+- **Event**: `onmessage`
+- **Data Payload**: `str` (the transcribed text)
+
+---
+
+## ⚙️ Core Configuration Variables
+
+| Parameter | Default Value | Description |
+| :--- | :--- | :--- |
+| `sample_rate` | `48000` | Target incoming WebRTC PCM audio rate (Hz). |
+| `silence_threshold` | `2.0` | Seconds of continuous silence before transcribing. |
+| `VAD_SAMPLE_RATE` | `16000` | Sample rate used for VAD analysis (Hz). |
+| `VAD_FRAME_DURATION_MS` | `30` | Duration of each VAD classification frame (ms). |
+| `VAD_WINDOW_SIZE` | `10` | Number of recent frames stored in the sliding hysteresis window. |
+| `M_ONSET` | `6` | Minimum active speech frames in the window to trigger speech onset. |
+| `M_OFFSET` | `1` | Maximum active speech frames in the window to start silence countdown. |
+
+---
+
+## 📖 Related Documentation
+
+- [Main Workspace README](../README.md) – System-wide overview
+- [Client Frontend README](../client/README.md) – React TalentAcquire UI
+- [MCP Server README](../mcp/README.md) – Whisper STT Tool and FastMCP architecture
+
+---
+
+**Version:** 1.0.0  
+**Status:** Completed & Fully Tested  
 **Last Updated:** May 2026

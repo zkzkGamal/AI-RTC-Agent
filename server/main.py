@@ -156,6 +156,12 @@ async def handle_offer(request: web.Request) -> web.Response:
             task = asyncio.ensure_future(_consume_audio_track(track, session))
             session.tasks.append(task)
 
+    @pc.on("datachannel")
+    def on_datachannel(channel):
+        logger.info(f"[{session_id}] DataChannel '{channel.label}' received")
+        if channel.label == "transcript":
+            session.audio_session.set_datachannel(channel)
+
     # SDP negotiation
     await pc.setRemoteDescription(offer)
     answer = await pc.createAnswer()

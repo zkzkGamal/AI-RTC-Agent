@@ -17,8 +17,12 @@ import wave
 import logging
 import asyncio
 import numpy as np
+import io
+import base64
 
 import webrtcvad
+from mcp.client.sse import sse_client
+from mcp.client.session import ClientSession
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +50,7 @@ class AudioSession:
     - After saving, resets and continues listening (loop)
     """
 
-    def __init__(self, session_id: str, sample_rate: int = 48000, silence_threshold: float = 1.0):
+    def __init__(self, session_id: str, sample_rate: int = 48000, silence_threshold: float = 2.0):
         self.session_id = session_id
         self.sample_rate = sample_rate
         self.silence_threshold = silence_threshold   # seconds of silence before saving
@@ -70,6 +74,8 @@ class AudioSession:
 
         self._output_dir = os.path.join("utterances", session_id)
         os.makedirs(self._output_dir, exist_ok=True)
+
+        self.datachannel = None
 
         logger.info(f"[{self.session_id}] AudioSession created  →  {self._output_dir}")
 
@@ -198,6 +204,9 @@ class AudioSession:
             f"[{self.session_id}] 💾  Utterance #{self._utterance_count} saved → {filename} "
             f"({len(data):,} bytes / {duration:.2f}s)"
         )
+        
+        # Trigger background final transcription
+        asyncio.create_task(self._transcribe_and_send(data))
 
     def _write_wav(self, filename: str, data: bytes) -> None:
         with wave.open(filename, "wb") as wf:
@@ -213,4 +222,56 @@ class AudioSession:
         self._silence_frames_count = 0
         self._vad_window.clear()
         self._history_buffer_raw.clear()
+
+    # ─── DataChannel & Live Transcription ───────────────────────────
+
+    def set_datachannel(self, channel) -> None:
+        self.datachannel = channel
+        logger.info(f"[{self.session_id}] DataChannel bound to AudioSession")
+
+    def send_transcript(self, text: str) -> None:
+        if self.datachannel and self.datachannel.readyState == "open":
+            try:
+                self.datachannel.send(text)
+                logger.info(f"[{self.session_id}] Sent transcript over DataChannel")
+            except Exception as e:
+                logger.error(f"[{self.session_id}] Failed to send transcript: {e}")
+        else:
+            logger.warning(f"[{self.session_id}] DataChannel is not open, cannot send transcript")
+
+
+
+    async def _transcribe_and_send(self, data: bytes) -> None:
+        """Helper to send audio bytes to MCP STT tool and forward response via DataChannel."""
+        if not data:
+            return
+
+        try:
+            # 1. Create in-memory WAV file from raw PCM bytes
+            wav_io = io.BytesIO()
+            with wave.open(wav_io, "wb") as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)
+                wf.setframerate(self.sample_rate)
+                wf.writeframes(data)
+            wav_bytes = wav_io.getvalue()
+
+            # 2. Encode to base64 for JSON serialization
+            base64_audio = base64.b64encode(wav_bytes).decode('utf-8')
+
+            # 3. Connect to the MCP Server running on port 8005
+            async with sse_client("http://localhost:8005/sse") as (read, write):
+                async with ClientSession(read, write) as mcp_session:
+                    await mcp_session.initialize()
+                    
+                    # 4. Call the stt tool
+                    response = await mcp_session.call_tool("stt", {"audio_bytes": base64_audio})
+                    
+                    # 5. Extract text and send to frontend
+                    if response and response.content:
+                        text = response.content[0].text
+                        logger.info(f"[{self.session_id}] MCP STT result: '{text}'")
+                        self.send_transcript(text)
+        except Exception as e:
+            logger.error(f"[{self.session_id}] Failed to transcribe audio via MCP STT: {e}")
 
