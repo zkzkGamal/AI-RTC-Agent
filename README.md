@@ -1,380 +1,218 @@
-# AI-RTC-Agent: Real-Time Voice Streaming via WebRTC
+# TalentAcquire™ AI Interview Assistant: Real-Time Voice Agent & STT Pipeline
 
-A real-time voice streaming platform built with **WebRTC**, **aiortc**, and **React**. Captures browser audio, streams it to a Python backend over WebRTC, detects speech with **Voice Activity Detection (VAD)**, and saves each utterance as a WAV file — forming the foundation for an intelligent AI call agent.
+[![Continuous Integration](https://github.com/zkzkGamal/AI-RTC-Agent/actions/workflows/ci.yml/badge.svg)](https://github.com/zkzkGamal/AI-RTC-Agent/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python Version](https://img.shields.io/badge/Python-3.10%2B-brightgreen.svg)](#server-python-setup)
+[![Node Version](https://img.shields.io/badge/Node-18%2B-green.svg)](#client-react-setup)
+[![FastMCP](https://img.shields.io/badge/MCP-FastMCP-orange.svg)](#mcp-speech-to-text-server)
 
-## 🎯 Overview
+An enterprise-grade real-time voice streaming and AI conversational transcription system. It establishes high-fidelity **WebRTC** media channels between a **React (Vite)** frontend and a **Python (aiortc)** signaling backend, performs local sliding-window **Voice Activity Detection (VAD)**, transcribes speech boundaries using a **FastMCP Whisper STT Server**, and streams conversational transcripts back to a premium HR interview dashboard over an out-of-band WebRTC **DataChannel**.
 
-AI-RTC-Agent is a full-stack audio pipeline that establishes a WebRTC peer connection between a React frontend and a Python aiohttp backend. The server processes incoming audio in real-time using VAD to segment speech from silence, then persists each detected utterance as a standalone WAV file.
+---
 
-**What's Implemented:**
-- 🎤 Real-time audio capture & streaming via WebRTC (audio-only)
-- 🎙️ Voice Activity Detection (VAD) using `webrtcvad`
-- 💾 Automatic utterance segmentation & WAV file saving
-- 🔄 Session-based processing with isolated per-user state
-- 🌐 CORS-enabled REST API for SDP exchange
-- ⚡ Fully async architecture (`asyncio` + `aiohttp`)
-- 🎨 React frontend with connection status & audio visualizer
+## 🎯 System Architecture
 
-**Planned (Not Yet Implemented):**
-- 🧠 LLM integration (GPT-4 / Claude) for AI reasoning
-- 📢 Speech-to-Text (STT) for transcription
-- 💬 Text-to-Speech (TTS) for agent responses
-- 📊 Real-time transcript display
-- 🔊 Agent audio playback via WebRTC
+The following block diagram illustrates the asynchronous lockstep pipeline, from browser capture to Whisper transcription and back-channel streaming:
 
-## 📁 Project Structure
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        CLIENT: React Frontend                          │
+│                                                                        │
+│   ┌─────────────────────────┐             ┌────────────────────────┐   │
+│   │   User Media Capture    │             │   TalentAcquire™ UI    │   │
+│   │   (48kHz Stereo/Mono)   │             │   Dialogue Timeline    │   │
+│   └────────────┬────────────┘             └───────────▲────────────┘   │
+└────────────────┼──────────────────────────────────────┼────────────────┘
+                 │ (WebRTC Audio Stream)                │ (Out-of-band DataChannel)
+                 │                                      │
+┌────────────────┼──────────────────────────────────────┼────────────────┐
+│                ▼        SERVER: WebRTC Backend        │                │
+│   ┌─────────────────────────┐             ┌───────────┴────────────┐   │
+│   │  _consume_audio_track   │             │    send_transcript     │   │
+│   │   Slices Mono Channel   │             │   Pushes Text to DC    │   │
+│   └────────────┬────────────┘             └───────────▲────────────┘   │
+│                │ (Interleaved-Safe Bytes)             │                │
+│                ▼                                      │                │
+│   ┌─────────────────────────┐                         │                │
+│   │  AudioSession.add_frame │                         │                │
+│   │    16kHz VAD / 48kHz    │                         │                │
+│   │  Lockstep Synchronizer  │                         │                │
+│   └────────────┬────────────┘                         │                │
+│                │ (2.0s Silence Offset Detected)       │                │
+│                ▼                                      │                │
+│   ┌─────────────────────────┐             ┌───────────┴────────────┐   │
+│   │   WAV Header Builder    │             │   _transcribe_and_send │   │
+│   │   Saves .wav to Disk    │             │   MCP SSE SSE Client   │   │
+│   └────────────┬────────────┘             └───────────▲────────────┘   │
+└────────────────┼──────────────────────────────────────┼────────────────┘
+                 │ (Base64 WAV Payload)                 │
+                 ▼                                      │
+┌───────────────────────────────────────────────────────┼────────────────┐
+│             MCP: FastMCP Speech-to-Text Server        │                │
+│                                                       │                │
+│   ┌─────────────────────────┐             ┌───────────┴────────────┐   │
+│   │  Base64 Auto-Decoding   │────────────>│ Whisper "small" Model  │   │
+│   │  Pre-Processor Bypass   │             │   Transcribe Engine    │   │
+│   └─────────────────────────┘             └────────────────────────┘   │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🚀 Technical Highlights & Algorithmic Solutions
+
+### 1. Dual-Buffer Lockstep VAD Synchronization
+To prevent **half-speed, distorted, or slow-motion audio playback**, the system processes high-fidelity audio and downsampled VAD frames in perfect synchronization:
+- **Downsampling (3:1 Decimation)**: Raw incoming 48kHz audio is decimated to 16kHz for analysis.
+- **Perfect Lockstep Alignment**: Accumulates 30ms VAD frames (`960` bytes) and raw 48kHz frames (`2880` bytes) concurrently. The VAD consumes exactly 30ms of downsampled data as the raw recorder consumes exactly 30ms of high-fidelity data. This eliminates frame mismatch, overlap, and speed duplication.
+
+### 2. Interleaved Stereo Slicing
+WebRTC browsers often stream dual-channel interleaved audio (`[L1, R1, L2, R2...]`). Manual extraction of one channel without considering the channel stride results in playing back dual-channel information at half-speed. The backend implements correct strided stereo-to-mono extraction:
+```python
+# Extract one channel cleanly based on channel count
+mono_samples = audio_array[0][::channel_count]
+pcm_bytes = mono_samples.tobytes()
+```
+This preserves the original pitch and native playback speed.
+
+### 3. Base64 Auto-Decoding Bypass in FastMCP
+FastMCP's Pydantic validation handles binary `bytes` arguments by converting JSON-RPC base64 strings into ASCII characters contained in a `bytes` object (e.g., `b"UklGR..."` representing the base64 characters) rather than decoded binary.
+The STT server implements an auto-decoding bypass that detects base64 patterns (like matching `b"UklGR"` or decoding strings to check for the WAV `RIFF` signature), resolving FFmpeg decoder errors (`Invalid data found when processing input`).
+
+### 4. 2.0s Silence-Triggered Automated Transcription
+Rather than relying on resource-intensive periodic background timers, the transcription pipeline is entirely **reactive**. When the candidate completes a sentence, the VAD state machine starts a countdown. If silence is maintained for **2.0 seconds**, the audio buffer is saved, packaged into a WAV, and transcribed via the FastMCP STT client.
+
+---
+
+## 🎨 Enterprise HR Recruitment Dashboard (TalentAcquire™)
+The React client is structured as a premium **HR Interview Assistant Dashboard**:
+- **Control Panel**: Hosts candidate metadata, interactive audio-responsive pulsing ring visualizers, connection switches, and signaling status indicators.
+- **Scrollable Timeline**: Keeps a permanent conversational transcript record (rather than overwriting). Each speech block is rendered with a candidate avatar, speaker name, dialogue index, and exact local timestamp (e.g. `10:32:15 AM`).
+- **Modern Glassmorphic styling**: Uses clean dark themes (`#060814` to `#0b0f19`), responsive css-grid alignment, slide-in animation entries, and modern custom scrollbars.
+
+---
+
+## 📁 Repository Structure
 
 ```
 AI-RTC-Agent/
-├── server/                        # Python WebRTC backend
-│   ├── main.py                   # aiohttp server, SDP signaling, session mgmt
-│   ├── audio_processor.py        # AudioSession: VAD, buffering, WAV saving
-│   ├── requirements.txt          # Production dependencies
-│   ├── requirements-dev.txt      # Dev/test dependencies
-│   ├── README.md                 # Server documentation
-│   └── utterances/               # Saved WAV files (per-session, gitignored)
-│
-├── client/                        # React web frontend
+├── .github/workflows/         # Continuous Integration Pipelines
+│   └── ci.yml                # Parallel build and test GitHub Action
+├── client/                    # React (Vite) Frontend
 │   ├── src/
-│   │   ├── App.jsx               # Main app shell — orchestrates session lifecycle
-│   │   ├── App.css               # Styling
-│   │   ├── main.jsx              # React entry point
-│   │   ├── components/
-│   │   │   ├── AudioVisualizer.jsx   # Animated audio ring
-│   │   │   ├── ControlButtons.jsx    # Start/Stop call buttons
-│   │   │   └── StatusDisplay.jsx     # Connection status & session info
-│   │   └── services/
-│   │       ├── api.js            # REST API calls (create session, send offer)
-│   │       └── webrtc.js         # WebRTC peer connection management
-│   ├── package.json              # Node dependencies
-│   ├── vite.config.js            # Vite dev server (port 3000)
-│   ├── index.html                # HTML template
-│   └── README.md                 # Client documentation
-│
-├── agent/                         # AI agent module (placeholder)
-│   ├── __init__.py
-│   └── README.md
-│
-├── mcp/                           # Model Context Protocol (placeholder)
-│   ├── __init__.py
-│   └── README.md
-│
-├── .env.example                   # Environment variable template
-├── .gitignore
-├── CONTRIBUTING.md
-├── DEVELOPMENT.md
-├── LICENSE                        # MIT License
-└── README.md
+│   │   ├── components/       # Visualizer, status displays, and controls
+│   │   ├── services/         # WebRTC and API connection adapters
+│   │   ├── App.jsx           # Core orchestrator and timeline log
+│   │   └── App.css           # Slate dark theme glassmorphism styling
+│   └── package.json          # Node scripts and dependencies
+├── server/                    # Python WebRTC & Media Backend
+│   ├── tests/                # VAD & synchronization unit tests
+│   ├── audio_processor.py    # AudioSession: lockstep VAD, MCP Client, and VAD hysteresis
+│   ├── main.py               # signaling, track consumer, and WebRTC server
+│   └── requirements-dev.txt  # Python requirements and testing setup
+├── mcp/                       # Model Context Protocol STT Server
+│   ├── tests/                # Module-patched FastMCP unit tests
+│   ├── tools/stt/stt.py      # Whisper STT tool & base64 decoder
+│   ├── server.py             # FastMCP application setup
+│   ├── main.py               # Run FastMCP via SSE transport on port 8005
+│   └── requirements-dev.txt  # MCP developer & test tools
+└── README.md                  # This file
 ```
 
-## 🚀 Quick Start
+---
 
-### Prerequisites
-- **Python 3.10+**
-- **Node.js 18+**
-- No external API keys required for the current version
+## 🚀 Quick Start Instructions
 
-### 1. Server Setup
+To run the full stack locally, follow these instructions. Open three separate terminal windows:
 
+### Window 1: Start the FastMCP Whisper Server
+Make sure you have `ffmpeg` installed on your system.
 ```bash
-cd server
-pip install -r requirements.txt
+cd mcp
+pip install -r requirements-dev.txt
 python main.py
 ```
+*The server will start on port `8005`, exposing SSE endpoints at `http://localhost:8005/sse`.*
 
-Server starts on `http://0.0.0.0:8080`
+### Window 2: Start the WebRTC Signaling Backend
+```bash
+cd server
+pip install -r requirements-dev.txt
+python main.py
+```
+*The server starts on port `8080`, listening for session and SDP exchange requests.*
 
-### 2. Client Setup
-
+### Window 3: Start the React Client App
 ```bash
 cd client
 npm install
 npm run dev
 ```
+*The client dev server starts on `http://localhost:5173` (or `http://localhost:3000`).*
 
-Client available at `http://localhost:3000`
+### Usage Flow:
+1. Open the React app in your browser (`http://localhost:5173`).
+2. Click **Start Connection** and accept the microphone prompt.
+3. Speak naturally. The pulsing rings around the candidate avatar will ripple.
+4. Stop speaking. After exactly **2.0 seconds of silence**, the segment is transcribed and appended to the **Live Interview Transcript** timeline with its timestamp.
 
-### 3. Start a Session
+---
 
-1. Open browser to `http://localhost:3000`
-2. Grant microphone permission
-3. Click **Start** to connect to the server
-4. Speak naturally — VAD detects your speech
-5. After silence (~1s), utterance is saved as a WAV file
-6. Click **Stop** to disconnect
+## 🧪 Testing & CI/CD Pipeline
 
-**What Happens Under the Hood:**
-1. Client creates a session via `GET /session`
-2. WebRTC peer connection is established (audio-only)
-3. Browser microphone audio streams to the server at 48 kHz
-4. Server downsamples to 16 kHz and runs VAD on 30ms frames
-5. Speech segments are buffered; silence triggers WAV save
-6. Files are written to `server/utterances/<session_id>/utt_<timestamp>.wav`
+The repository includes comprehensive unit testing frameworks that run concurrently on every push or pull request via **GitHub Actions**.
 
-## 🔧 Architecture
-
-### Audio Processing Pipeline
-```
-Browser Microphone (48 kHz)
-  ↓
-WebRTC PeerConnection (audio track)
-  ↓
-Server: _consume_audio_track()
-  ↓  Converts av.AudioFrame → int16 PCM
-  ↓
-AudioSession.add_frame()
-  ↓  Downsamples 48kHz → 16kHz (3:1 decimation)
-  ↓
-webrtcvad (30ms frames, aggressiveness=3)
-  ↓
-┌─── Speech detected ───┐
-│  Accumulate in buffer  │
-└────────────────────────┘
-  ↓ (silence ≥ 1.0s)
-Save utterance → WAV file
-  ↓
-Reset buffers → continue listening
+### 1. WebRTC Backend Tests
+Verifies correct lockstep decimation, sliding VAD windows, and state machine integrity:
+```bash
+cd server
+python -m pytest tests/ -v
 ```
 
-### Key Design Decisions
+### 2. MCP Server Tests
+Verifies the Whisper `stt` tool using direct module-level patching (`sys.modules`) to mock the neural network engine, ensuring fast unit tests that run without GPU hardware:
+```bash
+cd mcp
+python -m pytest tests/ -v
+```
 
-| Decision | Rationale |
-|----------|-----------|
-| **48 kHz capture** | WebRTC/Opus native rate; highest fidelity for downstream STT |
-| **16 kHz VAD** | `webrtcvad` optimal rate; proven reliable |
-| **3:1 decimation** | Simple, low-latency downsample for VAD (not for recording) |
-| **Aggressiveness 3** | Most aggressive VAD filtering — reduces false positives |
-| **1.0s silence threshold** | Balances natural pauses vs. utterance boundaries |
-| **WAV at 48 kHz** | Raw audio saved at full quality for future STT processing |
-| **numpy `.tobytes()`** | Correct PCM serialization (avoids `struct.pack` endian issues) |
+---
 
-## 📋 Configuration
+## ⚙️ Configuration Variables (`.env`)
 
-### Environment Variables
-
-Copy `.env.example` to `.env` and configure:
+Configure settings by creating `.env` files in `server/` and `mcp/` directories:
 
 ```bash
-# Server
+# Server Settings
 SERVER_HOST=0.0.0.0
 SERVER_PORT=8080
 LOG_LEVEL=INFO
 
-# Audio Processing
-VAD_AGGRESSIVENESS=2          # 0-3, higher = more aggressive
-SILENCE_THRESHOLD=1.0         # seconds of silence before saving
-AUDIO_SAMPLE_RATE=48000       # WebRTC audio rate (Hz)
-VAD_SAMPLE_RATE=16000         # VAD processing rate (Hz)
+# Audio & VAD Settings
+AUDIO_SAMPLE_RATE=48000
+SILENCE_THRESHOLD=2.0
+VAD_AGGRESSIVENESS=3
 
-# CORS
-CORS_ORIGINS=*
-ALLOWED_ORIGINS=http://127.0.0.1:3000,http://localhost:3000
-
-# Output
-UTTERANCES_DIR=./utterances
-
-# Client
-VITE_SERVER_URL=http://127.0.0.1:8080
+# Client Config
+VITE_SERVER_URL=http://localhost:8080
 ```
-
-## 📦 Dependencies
-
-### Server (`server/requirements.txt`)
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| **aiortc** | ≥1.9.0 | WebRTC implementation (peer connections, SDP, media) |
-| **aiohttp** | ≥3.9.0 | Async HTTP server framework |
-| **aiohttp-cors** | ≥0.7.0 | CORS middleware |
-| **python-socketio** | ≥5.9.0 | WebSocket support |
-| **webrtcvad** | ≥2.0.10 | Voice Activity Detection |
-| **numpy** | ≥1.26.0 | Audio array operations & PCM conversion |
-| **scipy** | ≥1.10.0 | Audio resampling utilities |
-| **python-dotenv** | ≥1.0.0 | Environment variable loading |
-| **pydantic** | ≥2.0.0 | Data validation & settings |
-| **redis** | ≥4.5.0 | Session caching (optional) |
-
-### Client (`client/package.json`)
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| **react** | ^18.3.1 | UI library |
-| **react-dom** | ^18.3.1 | React DOM renderer |
-| **vite** | ^5.4.2 | Build tool & dev server |
-| **@vitejs/plugin-react** | ^4.3.1 | Vite React plugin |
-
-## 📊 Output
-
-### Saved Utterances
-Each detected speech segment is saved as a WAV file:
-
-```
-server/utterances/<session_id>/
-├── utt_1715612345000.wav
-├── utt_1715612348500.wav
-└── utt_1715612352100.wav
-```
-
-### WAV File Properties
-| Property | Value |
-|----------|-------|
-| Format | WAV (uncompressed) |
-| Channels | 1 (Mono) |
-| Sample Rate | 48,000 Hz |
-| Bit Depth | 16-bit |
-| Encoding | PCM signed int16, little-endian |
-
-## 🔌 API Endpoints
-
-### `GET /session`
-
-Create a new voice session.
-
-**Response:**
-```json
-{
-  "session_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-}
-```
-
-### `POST /session/{session_id}/offer`
-
-Exchange SDP offer/answer to establish a WebRTC connection.
-
-**Request:**
-```json
-{
-  "sdp": "v=0\no=...",
-  "type": "offer"
-}
-```
-
-**Response:**
-```json
-{
-  "sdp": "v=0\no=...",
-  "type": "answer"
-}
-```
-
-## 🛠️ Development
-
-### Running Tests
-```bash
-# Install dev dependencies
-cd server
-pip install -r requirements-dev.txt
-
-# Run tests
-python -m pytest tests/ -v
-
-# Client
-cd client
-npm run test
-```
-
-### Building for Production
-
-```bash
-# Client production build
-cd client
-npm run build
-# Output → dist/
-```
-
-### Debugging
-
-**Server Logs:**
-```bash
-# Set DEBUG level in main.py or via LOG_LEVEL env var
-LOG_LEVEL=DEBUG python main.py
-```
-
-**Client DevTools:**
-- Open browser DevTools → **Network** tab for SDP offer/answer
-- **Console** for WebRTC connection state changes
-- Check `pc.connectionState` in React state
-
-## 🔐 Security Considerations
-
-1. **CORS:** Currently allows all origins (`*`). Restrict in production:
-   ```python
-   cors = aiohttp_cors.setup(app, defaults={
-       "https://yourdomain.com": aiohttp_cors.ResourceOptions(...)
-   })
-   ```
-
-2. **HTTPS:** Required by browsers for `getUserMedia()` (microphone access) in production
-
-3. **Rate Limiting:** Not yet implemented — add before public deployment
-
-4. **Audio Storage:** WAV files are stored unencrypted; implement encryption for sensitive data
-
-## 🐛 Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| **CORS errors** | Ensure server running on `:8080`; check `ALLOWED_ORIGINS` |
-| **No audio received** | Check microphone permissions in browser; verify server logs |
-| **VAD not detecting speech** | Lower `VAD_AGGRESSIVENESS` (try 1 or 2); check audio levels |
-| **Files not saving** | Check `server/utterances/` directory permissions |
-| **Connection fails** | Verify both server (`:8080`) and client (`:3000`) are running |
-| **Audio stuttering** | Check CPU usage; reduce network latency |
-| **`struct.pack` errors** | Ensure using numpy `.tobytes()` (not manual packing) |
-
-## 🗺️ Roadmap
-
-- [ ] **STT Integration** — Speech-to-Text (Google Cloud Speech / Whisper / OpenAI)
-- [ ] **LLM Processing** — AI reasoning with GPT-4 / Claude / Llama
-- [ ] **TTS Synthesis** — Text-to-Speech for agent responses (Google Cloud TTS / ElevenLabs)
-- [ ] **Agent Module** — Conversational AI agent with context memory
-- [ ] **Audio Playback** — Send TTS audio back to client via WebRTC
-- [ ] **Real-time Transcripts** — Live transcript display in the UI
-- [ ] **MCP Integration** — Model Context Protocol for tool use
-- [ ] **Docker Deployment** — Containerized deployment
-- [ ] **WebSocket Events** — Real-time call events and status updates
-
-## 📖 Documentation
-
-- [Server README](./server/README.md) – Backend architecture & API details
-- [Client README](./client/README.md) – Frontend setup & components
-- [Agent README](./agent/README.md) – AI agent module (planned)
-- [MCP README](./mcp/README.md) – Model Context Protocol (planned)
-- [Contributing Guide](./CONTRIBUTING.md) – How to contribute
-- [Development Guide](./DEVELOPMENT.md) – Development workflow
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-MIT License — See [LICENSE](./LICENSE) file for details.
-
-## 👨‍💻 Author
-
-Built by [zkzkGamal](https://github.com/zkzkGamal)
-
-## 🙏 Acknowledgments
-
-- [aiortc](https://github.com/aiortc/aiortc) – Python WebRTC implementation
-- [webrtcvad](https://github.com/wiseman/py-webrtcvad) – Voice Activity Detection
-- [React](https://react.dev) – UI framework
-- [Vite](https://vitejs.dev) – Build tool & dev server
-
-## 📞 Support
-
-For issues, questions, or suggestions:
-1. Check existing [GitHub Issues](https://github.com/zkzkGamal/AI-RTC-Agent/issues)
-2. Create a new issue with detailed information
-3. Include logs, error messages, and reproduction steps
 
 ---
 
-**Last Updated:** May 2026
-**Version:** 0.1.0
-**Status:** Active Development — Core audio pipeline complete, AI integration in progress
+## 🗺️ Project Roadmap
+
+- [x] **WebRTC Audio Streaming** — High-fidelity mono channel streaming.
+- [x] **Lockstep Frame VAD Sync** — Zero slow-motion or sample duplicates.
+- [x] **React HR Dashboard** — Premium TalentAcquire™ visual timeline.
+- [x] **FastMCP Whisper STT** — Silence-triggered reactive transcription.
+- [x] **GitHub Actions CI** — Multi-job validation suite.
+- [ ] **Multi-Speaker Diarization** — Separating interviewer vs. candidate.
+- [ ] **LLM Orchestrator** — Live evaluation and real-time response generation.
+- [ ] **Outbound Audio (TTS)** — Streaming synthesized voice responses back to browser WebRTC audio tracks.
+
+---
+
+**Last Updated:** May 2026  
+**Status:** Main Production Integrations Complete & Verified  
+**Author:** [zkzkGamal](https://github.com/zkzkGamal)  
+**License:** MIT  

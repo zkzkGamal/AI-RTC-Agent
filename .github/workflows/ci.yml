@@ -1,0 +1,95 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  # ─── Client Build Validation ──────────────────────────────────────
+  client-build:
+    name: Validate React Frontend Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (v18)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: 'client/package-lock.json'
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd client
+          npm install
+
+      - name: Compile and Build React Bundle
+        run: |
+          cd client
+          npm run build
+
+  # ─── WebRTC Server Test Suite ─────────────────────────────────────
+  server-tests:
+    name: Run Python WebRTC Server Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python (3.10)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+          cache-dependency-path: 'server/requirements-dev.txt'
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential python3-dev
+
+      - name: Install Server Python Dependencies
+        run: |
+          cd server
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run WebRTC Backend Pytest Suite
+        run: |
+          cd server
+          python -m pytest tests/ -v --cov=. --cov-report=xml
+
+  # ─── FastMCP Whisper Server Test Suite ───────────────────────────
+  mcp-tests:
+    name: Run FastMCP Whisper Server Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python (3.10)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+          cache-dependency-path: 'mcp/requirements-dev.txt'
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg build-essential
+
+      - name: Install MCP Python Dependencies
+        run: |
+          cd mcp
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run MCP Server Pytest Suite
+        run: |
+          cd mcp
+          python -m pytest tests/ -v

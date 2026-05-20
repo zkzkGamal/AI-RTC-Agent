@@ -1,0 +1,7 @@
+# FastMCP Whisper Speech-to-Text Server Dependencies
+# Python 3.10+ and system ffmpeg required
+
+mcp[cli]>=0.1.0                  # Model Context Protocol python SDK and CLI
+openai-whisper>=20231117         # Robust speech recognition library
+django-environ>=0.10.0           # Simple environment configurations parser
+numpy>=1.20.0                    # Numeric array helpers for audio processing
