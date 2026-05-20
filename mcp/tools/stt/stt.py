@@ -6,6 +6,7 @@ The tool is designed to be easy to use and can be integrated into different syst
 
 from server import mcp
 import logging , environ , pathlib
+import whisper
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -13,6 +14,9 @@ logger = logging.getLogger(__name__)
 base_path = pathlib.Path(__file__).parent.parent.parent
 e = environ.Env()
 e.read_env(str(base_path / ".env"))
+
+# Load the whisper model
+model = whisper.load_model("small")
 
 @mcp.tool()
 def stt(audio_bytes: bytes) -> str:
@@ -23,13 +27,44 @@ def stt(audio_bytes: bytes) -> str:
     Returns:
         str: The transcribed text from the audio.
     """
-    import torch
-    import whisper
+    import tempfile
+    import os
+    import base64
 
-    # Load the whisper model
-    model = whisper.load_model("base")
+    # Handle base64 encoding detection and decoding
+    raw_data = audio_bytes
+    if isinstance(raw_data, str):
+        try:
+            raw_data = base64.b64decode(raw_data)
+        except Exception:
+            raw_data = raw_data.encode('utf-8')
 
-    # Transcribe the audio
-    result = model.transcribe(audio_bytes, language='en', fp16=False)
-    text = result['text'].strip()
+    if isinstance(raw_data, bytes):
+        if raw_data.startswith(b"UklGR"):
+            try:
+                raw_data = base64.b64decode(raw_data)
+            except Exception:
+                pass
+        elif not raw_data.startswith(b"RIFF"):
+            try:
+                decoded = base64.b64decode(raw_data)
+                if decoded.startswith(b"RIFF"):
+                    raw_data = decoded
+            except Exception:
+                pass
+
+    # Write the audio bytes to a temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+        tmp.write(raw_data)
+        tmp_path = tmp.name
+
+    try:
+        # Transcribe the audio file path
+        result = model.transcribe(tmp_path, language='en', fp16=False)
+        text = result['text'].strip()
+    finally:
+        # Clean up the temporary file
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
     return text
