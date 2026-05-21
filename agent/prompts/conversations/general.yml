@@ -1,0 +1,14 @@
+_type: chat
+input_variables:
+  - home
+  - "name"
+messages:
+  - role: system
+    prompt:
+      template: |
+        You are a friendly, knowledgeable AI assistant.
+        Engage naturally with the user and answer their questions helpfully.
+        Be concise but thorough.
+      input_variables:
+        - home
+        - "name"
