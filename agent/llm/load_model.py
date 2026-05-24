@@ -44,4 +44,22 @@ class LLMFactory:
         except Exception as e:
             logger.error(f"Error preloading Ollama model {model_name}: {e}")
 
-llm = LLMFactory.create_llm(e("LLM_MODEL", default="gpt-3.5-turbo"))
+
+api_key = None
+if MODEL_TYPE == "ollama":
+    api_key = e("OLLAMA_API_KEY", default=None)
+elif MODEL_TYPE == "openai":
+    api_key = e("OPENAI_API_KEY", default=None)
+elif MODEL_TYPE == "google":
+    api_key = e("GOOGLE_API_KEY", default=None)
+    
+
+llm = LLMFactory.create_llm(
+    model_name=e("LLM_MODEL", default="gpt-3.5-turbo"),
+    temperature=0.7,
+    max_tokens=2048,
+    top_p=0.9,
+    frequency_penalty=0,
+    presence_penalty=0,
+    api_key=api_key,
+)
