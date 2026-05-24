@@ -78,3 +78,6 @@ htmlcov/
 # IDE Settings (local)
 .eslintcache
 .stylelintcache
+
+credentials.json
+token.json

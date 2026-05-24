@@ -28,7 +28,6 @@ _SYSTEM_PROMPT = load_prompts.load_prompt(f"router/{AGENT_MODE}.yaml")
 
 def router(state: dict) -> dict:
     """Classify intent and store it in state['intent']."""
-    # llm = _build_llm()
 
     last_message = state["messages"][-1]
     # Extract text whether it's a BaseMessage or a plain string
