@@ -14,6 +14,5 @@ from langgraph.graph.message import add_messages
 class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
     category: Optional[List]
-    pending_confirmation: Optional[Dict[str, Optional[str]]]
     tool_calls: Optional[List[Dict[str, str]]]
     tool_results: Optional[str]
