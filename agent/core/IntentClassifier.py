@@ -15,7 +15,6 @@ AGENT_MODE = e("AGENT_MODE", default="general")
 def get_intent(response: dict) -> str:
     """Classify the intent of the user message."""
     # For simplicity, we'll use keyword-based classification.
-    # In a real application, you might use a more sophisticated approach (e.g., an LLM).
     raw = response.content.strip().lower()
     intent = raw if raw in {"toot_call","chat" } else "chat"
     return intent
