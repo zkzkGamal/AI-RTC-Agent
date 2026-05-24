@@ -1,15 +1,24 @@
 """
-This module contains tools for email management, including checking the inbox, drafting replies, sending emails, reading emails, and replying to emails.
+Email tool exports.
 
-Tools:
-- check_inbox: Check the user's email inbox for new messages.
-- draft_reply: Draft a reply to a specific email.
-- send_email: Send an email to a specified recipient.
-- read_email: Read the content of a specific email.
-- reply_to_email: Reply to a specific email with a drafted message.
+`check_inbox.py` currently defines the inbox tool as `list_inbox`, so we
+re-export it under both names to keep imports stable while the API settles.
 """
-from .check_inbox import check_inbox
+
+from .check_inbox import list_inbox
 from .draft import draft_reply
 from .send_mail import send_email
 from .read_email import read_email
 from .reply_to_email import reply_to_email
+
+# Backward-compatible alias for older imports.
+check_inbox = list_inbox
+
+__all__ = [
+    "check_inbox",
+    "list_inbox",
+    "draft_reply",
+    "send_email",
+    "read_email",
+    "reply_to_email",
+]

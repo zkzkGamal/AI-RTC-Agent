@@ -9,17 +9,30 @@ import logging
 import asyncio
 import tempfile
 
-import whisper
-
 from server import mcp
 from utils import ok, err, from_exception
 from utils.rate_limiter import rate_limiter
 
 logger = logging.getLogger(__name__)
 
-# ── Load model once at startup — not per call ─────────────────────────────────
-model = whisper.load_model("small")
-logger.info("Whisper model loaded.")
+# Lazily load the Whisper model on first access, or preload it during server
+# startup for smoother first-request latency.
+model = None
+
+
+def _get_model():
+    global model
+    if model is None:
+        import whisper
+
+        model = whisper.load_model("small")
+        logger.info("Whisper model loaded.")
+    return model
+
+
+def preload_model() -> None:
+    """Warm the Whisper model during server startup."""
+    _get_model()
 
 
 def _decode_audio(audio_bytes: bytes | str) -> bytes:
@@ -65,7 +78,7 @@ def _transcribe_sync(audio_bytes: bytes | str) -> str:
         tmp_path = tmp.name
 
     try:
-        result = model.transcribe(tmp_path, language="en", fp16=False)
+        result = _get_model().transcribe(tmp_path, language="en", fp16=False)
         return result["text"].strip()
     finally:
         if os.path.exists(tmp_path):

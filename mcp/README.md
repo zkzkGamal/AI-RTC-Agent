@@ -86,6 +86,11 @@ The FastMCP server will run on:
 pytest tests/ -v
 ```
 
+The MCP test suite now has two quality-of-life improvements:
+
+- STT uses lazy Whisper model loading, so pytest collection stays fast and does not load the model before a test actually needs it.
+- tests print live progress with a cleaner runner-style output while they execute.
+
 ## Environment Variables
 
 Use `mcp/.env` for local configuration.
@@ -302,7 +307,26 @@ Provides shared async HTTP helpers with:
 - `main.py` imports `tools` so FastMCP registers the tool modules on startup.
 - `server.py` creates the FastMCP app with name `AI-RTC-Agent` on port `8005`.
 - `get_token.py` should only be run when you need to create or refresh the first OAuth token locally.
-- Whisper model loading happens at module import time in `tools/stt/stt.py`.
+- Whisper model loading is lazy in `tools/stt/stt.py`, which keeps imports and test collection lightweight.
+
+## Testing Experience
+
+Run the MCP tests from inside `mcp/`:
+
+```bash
+pytest tests/
+```
+
+You should now see live test progress in a cleaner format, for example:
+
+```text
+[ RUN ] Test successful speech-to-text transcription
+[ OK  ] Test successful speech-to-text transcription
+[ RUN ] Test successful DuckDuckGo search response mapping
+[ OK  ] Test successful DuckDuckGo search response mapping
+```
+
+This output is configured in `tests/conftest.py`.
 
 ## Related Docs
 
