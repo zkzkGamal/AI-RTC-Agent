@@ -10,6 +10,7 @@ from .emails import (
     reply_to_email,
 )
 from .search_web import duckduckgo_search, search_web
+from .calendar import create_calendar_event, load_calendar_events
 
 __all__ = [
     "stt",
@@ -21,4 +22,6 @@ __all__ = [
     "reply_to_email",
     "duckduckgo_search",
     "search_web",
+    "create_calendar_event",
+    "load_calendar_events",
 ]

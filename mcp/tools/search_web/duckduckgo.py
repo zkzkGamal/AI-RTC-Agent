@@ -18,8 +18,13 @@ import asyncio
 from duckduckgo_search import DDGS
 
 from server import mcp
-from utils import ok, err, from_exception
-from utils.rate_limiter import rate_limiter
+
+try:
+    from mcp.utils import ok, err, from_exception
+    from mcp.utils.rate_limiter import rate_limiter
+except ModuleNotFoundError:
+    from utils import ok, err, from_exception
+    from utils.rate_limiter import rate_limiter
 
 logger = logging.getLogger(__name__)
 

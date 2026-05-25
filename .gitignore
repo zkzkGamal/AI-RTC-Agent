@@ -37,6 +37,8 @@ env/
 
 # Node/npm
 node_modules/
+.npm/
+.cache/
 npm-debug.log
 npm-error.log
 yarn-error.log

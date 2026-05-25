@@ -14,18 +14,20 @@ import httpx
 from dotenv import load_dotenv
 
 from server import mcp
-from utils import credentials, ok, err, from_exception
-from utils.rate_limiter import rate_limiter
+
+try:
+    from mcp.utils import ok, from_exception
+    from mcp.utils.rate_limiter import rate_limiter
+except ModuleNotFoundError:
+    from utils import ok, from_exception
+    from utils.rate_limiter import rate_limiter
+from service.create_header import _headers
 
 logger = logging.getLogger(__name__)
 load_dotenv()
 
 GMAIL_API = os.getenv("GMAIL_API_URL", "https://gmail.googleapis.com/gmail/v1/users/me")
 
-def _headers() -> dict:
-    """Load fresh token and return auth headers."""
-    token = credentials.load_gmail_token()
-    return {"Authorization": f"Bearer {token}"}
 
 
 @mcp.tool()

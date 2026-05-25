@@ -8,14 +8,16 @@ Usage:
 """
 
 import os
+from pathlib import Path
 from dataclasses import dataclass
 from dotenv import load_dotenv
-from utils.exceptions import AuthError
+from .exceptions import AuthError
 from google.oauth2.credentials import Credentials as GoogleCredentials
 from google.auth.transport.requests import Request
 
 
 load_dotenv()
+MCP_DIR = Path(__file__).resolve().parents[1]
 
 
 @dataclass
@@ -34,6 +36,10 @@ class Credentials:
     
     GMAIL_TOKEN_FILE: str | None = None
     GMAIL_SENDER: str | None = None
+
+    def _resolve_path(self, file_path: str) -> Path:
+        path = Path(file_path)
+        return path if path.is_absolute() else MCP_DIR / path
     
     def load_gmail_token(self) -> str:
         """Load Gmail token from file specified in .env. Raises AuthError if missing."""
@@ -44,17 +50,18 @@ class Credentials:
                 tool_name="gmail_token",
             )
         try:
-            creds = GoogleCredentials.from_authorized_user_file(self.GMAIL_TOKEN_FILE)
+            token_path = self._resolve_path(token_file)
+            creds = GoogleCredentials.from_authorized_user_file(token_path)
             # auto-refresh if expired
             if creds.expired and creds.refresh_token:
                 creds.refresh(Request())
-                with open("token.json", "w") as f:
+                with open(token_path, "w") as f:
                     f.write(creds.to_json())
 
             return creds.token
         except Exception as e:
             raise AuthError(
-                message=f"Failed to load Gmail token from '{token_file}': {e}",
+                message=f"Failed to load Gmail token from '{token_path}': {e}",
                 tool_name="gmail_token",
             ) from e
     
@@ -93,7 +100,4 @@ def _load() -> Credentials:
         GMAIL_SENDER=os.getenv("GMAIL_SENDER"),
     )
 
-
-# ── Single shared instance ────────────────────────────────────────────────────
-# Import this everywhere — credentials are loaded once at startup, not per call.
 credentials = _load()

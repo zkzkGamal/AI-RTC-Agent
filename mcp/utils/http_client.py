@@ -11,7 +11,8 @@ Usage:
 
 import asyncio
 import httpx
-from utils.exceptions import ExternalAPIError, RateLimitError
+
+from .exceptions import ExternalAPIError, RateLimitError
 
 # ── Config ────────────────────────────────────────────────────────────────────
 TIMEOUT         = 10.0   # seconds per request

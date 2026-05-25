@@ -30,3 +30,4 @@ google-auth-oauthlib>=1.2.0
 # Web search
 duckduckgo-search>=6.2.0
 ddgs
+icalendar

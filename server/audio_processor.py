@@ -260,7 +260,13 @@ class AudioSession:
             base64_audio = base64.b64encode(wav_bytes).decode('utf-8')
 
             # 3. Connect to the MCP Server running on port 8005
-            async with sse_client("http://localhost:8005/sse") as (read, write):
+            from ApiKeyGenerator import api_key_generator
+            generator = api_key_generator()
+            api_key = generator.generate_api_key()
+
+            async with sse_client(
+                "http://localhost:8005/sse" , headers={"X-API-Key": api_key}
+                ) as (read, write):
                 async with ClientSession(read, write) as mcp_session:
                     await mcp_session.initialize()
                     

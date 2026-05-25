@@ -150,7 +150,8 @@ async def test_send_email_success(monkeypatch):
     }
     assert captured["required_fields"] == ("MAIL_HOST", "MAIL_USERNAME", "MAIL_PASSWORD")
     assert captured["tool_name"] == "gmail"
-    assert captured["func"] is send_module._send_sync
+    assert captured["func"].__self__ is send_module.mail_service
+    assert captured["func"].__func__ is send_module.mail_service._send_sync.__func__
     assert captured["subject"] == "Test mail"
     assert captured["body"] == "Hello from pytest"
     assert captured["to_email"] == ["receiver@example.com"]

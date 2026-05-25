@@ -23,3 +23,5 @@ ddgs
 pytest>=7.0.0              # Core unit testing framework
 pytest-asyncio>=0.20.0     # Async test execution support
 pytest-mock>=3.10.0        # Mocking and patching helpers
+
+icalendar

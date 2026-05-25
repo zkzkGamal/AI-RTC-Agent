@@ -6,10 +6,15 @@ No dependencies beyond pytest — uses ANSI escape codes directly.
 """
 
 import itertools
+from pathlib import Path
 import sys
 import threading
 import time
 import pytest
+
+MCP_ROOT = Path(__file__).resolve().parents[1]
+if str(MCP_ROOT) not in sys.path:
+    sys.path.insert(0, str(MCP_ROOT))
 
 RESET   = "\033[0m"
 BOLD    = "\033[1m"

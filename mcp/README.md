@@ -1,335 +1,262 @@
-# MCP Server
+# FastMCP Server - Core Tools & Services Layer 🛠️
 
-FastMCP server for the `AI-RTC-Agent` workspace. This service exposes local tools for:
+This directory contains the **Model Context Protocol (FastMCP)** server for the `AI-RTC-Agent` workspace. Running on port `8005` over Server-Sent Events (SSE), this microservices layer exposes heavy-duty tools for speech-to-text, calendar event handling, internet search, and email automation, while enforcing structured rate limiting, custom authorization middleware, and standardized outputs.
 
-- speech-to-text with Whisper
-- email sending and inbox actions
-- web search with DuckDuckGo
-- shared auth, rate limiting, HTTP, and response helpers
+---
 
-The server runs over SSE on port `8005`.
+## 🏗️ Architectural Overview
 
-## What Changed
+The MCP layer decouples its transport protocol (FastMCP / SSE) from the underlying business and authorization logic using a clean three-tiered layout:
 
-The MCP server is no longer just an STT endpoint. It now includes:
+```text
+               ┌─────────────────────────────────┐
+               │    Python WebRTC Server / API   │
+               └────────────────┬────────────────┘
+                                │
+                      HTTP / SSE Request (with X-API-Key)
+                                │
+               ┌────────────────▼────────────────┐
+               │         MCPApiKeyMiddleware     │  [Core Auth Tier]
+               │     (Validates dynamic hash)    │
+               └────────────────┬────────────────┘
+                                │
+               ┌────────────────▼────────────────┐
+               │           FastMCP Tools         │  [Tool Definition Tier]
+               │     (Exposes tool endpoints)    │
+               └────────┬────────────────┬───────┘
+                        │                │
+          ┌─────────────▼──────┐  ┌──────▼─────────────┐
+          │    Service Layer   │  │   Utility Layer    │  [Implementation Tier]
+          │   (Audio/Mail/Cal) │  │ (Rate/Error/Parse) │
+          └────────────────────┘  └────────────────────┘
+```
 
-- `stt` for audio transcription
-- `send_email` for SMTP email sending
-- `list_inbox` for recent Gmail inbox messages
-- `read_email` for full Gmail message content
-- `reply_to_email` for replying to an email
-- `draft_reply` for generating a simple reply draft
-- `duckduckgo_search` for web search
-- shared utility modules in `utils/` for auth, HTTP, errors, responses, and rate limiting
+1.  **Core Auth Tier (`core/`)**: Starlette middleware intercepts HTTP connections, validating dynamic, time-locked timestamp API keys before requests reach the tools.
+2.  **Tool Definition Tier (`tools/`)**: Exposes structured interfaces to the WebRTC server, acting as high-level endpoints.
+3.  **Implementation Tier (`service/` & `utils/`)**:
+    *   **Service Layer**: Singleton classes and core business modules managing heavy resources (Whisper model loading, SMTP formatting, Google client bindings).
+    *   **Utility Layer**: Cross-cutting tools ensuring rate limits, custom exceptions, standardized response envelopes, and client retries act uniformly.
 
-## Project Layout
+---
+
+## 📁 Layout & Structure
 
 ```text
 mcp/
-├── main.py
-├── server.py
-├── get_token.py
-├── .env.example
+├── core/
+│   ├── ApiKeyGenerator.py    # Deterministic time-based key algorithm
+│   └── Middleware.py         # Starlette X-API-Key validator middleware
+├── service/
+│   ├── AudioService.py       # Decodes incoming base64 and maps transcription
+│   ├── CalnderService.py     # Base calendar normalization structures
+│   ├── CalendarGoogleService.py  # Google Calendar API interfaces
+│   ├── CalendarICSService.py # Local iCalendar (.ics) fallback engine
+│   ├── LoadModelService.py   # Shared Whisper model preloader and singleton
+│   └── MailService.py        # Outbound SMTP + reply header orchestrator
 ├── tools/
-│   ├── emails/
-│   ├── search_web/
-│   └── stt/
+│   ├── calendar/             # Exposed FastMCP calendar endpoints
+│   ├── emails/               # Exposed FastMCP email & reply tools
+│   ├── search_web/           # DuckDuckGo search tool
+│   └── stt/                  # Whisper STT transcribers
 ├── utils/
-│   ├── auth.py
-│   ├── exceptions.py
-│   ├── http_client.py
-│   ├── rate_limiter.py
-│   └── response_parser.py
-└── tests/
+│   ├── auth.py               # Credentials loader and OAuth refreshers
+│   ├── exceptions.py         # Domain error hierarchy
+│   ├── http_client.py        # Asynchronous custom HTTP agent
+│   ├── rate_limiter.py       # Token-Bucket rate limiter
+│   └── response_parser.py    # Unified API response parser
+├── main.py                   # Application entrypoint & preloading trigger
+├── server.py                 # FastMCP setup & Starlette configuration
+├── get_token.py              # Local Google OAuth desktop authorization helper
+├── requirements.txt          # Production dependencies
+└── requirements-dev.txt      # Developer test packages
 ```
 
-## Quick Start
+---
 
-### 1. Install system requirements
+## 🔒 Custom Dynamic API Key Authentication
 
-Whisper needs `ffmpeg` installed on the machine.
+To secure communications between local servers without exposing static long-lived credentials, this project uses a **Dynamic Timestamp-based Zero-Shared-State Authentication Protocol**.
 
-```bash
-sudo apt update
-sudo apt install ffmpeg
-```
+### The Principle of Operation
+Both the sender (WebRTC server) and receiver (MCP server) import `api_key_generator`. Because the algorithm is deterministic and locked to a synchronized time clock (UTC), they can generate and validate credentials instantly:
 
-### 2. Install Python dependencies
+1.  **Generation**: The sender gets the current UTC timestamp, divides it by an epoch sliding window (5 seconds), and generates a deterministic hash (e.g., `S_33758364_A`).
+2.  **Transportation**: The key is attached as a request header: `X-API-Key: S_33758364_A`.
+3.  **Interception**: `MCPApiKeyMiddleware` extracts the key.
+4.  **Verification**:
+    *   **Expiration Check**: The middleware extracts the timestamp and compares it with its local time. If the time difference is greater than 1 grace window (5 seconds), the request is rejected as `401 Unauthorized` (preventing replay attacks).
+    *   **Hash Check**: The middleware recalculates the expected suffix and prefix for that exact timestamp. If they match, the request is authenticated.
 
-```bash
-cd mcp
-pip install -r requirements-dev.txt
-```
+---
 
-### 3. Create your environment file
+## ⚙️ Service Layer Deep Dive (`service/`)
 
+These services handle all business logic, isolated from the FastMCP wrapper:
+
+*   **`LoadModelService`**: A singleton class managing the **OpenAI Whisper `"small"`** model. Running `preload_model()` at boot loads the model parameters into system memory, avoiding a cold-start latency of ~4-5 seconds on the first candidate speech segment.
+*   **`AudioService`**: Normalizes audio formats. It accepts raw bytes, base64 strings, or base64 bytes, decodes them to raw WAV formats, and invokes Whisper to produce clean transcriptions.
+*   **`MailService`**: Handles email formatting and SMTP transmission. It parses inbox metadata and automatically injects standard reply headers (`In-Reply-To` and `References`) to ensure conversational continuity in the recipient's mail client.
+*   **`CalendarServices`**: Implements a dual-provider calendar engine. It attempts to load or create events via Google Calendar API, but automatically compiles and returns an **iCalendar (`.ics`)** byte payload as a fallback if the API is offline.
+
+---
+
+## ⚙️ Utility Layer Deep Dive (`utils/`)
+
+*   **`rate_limiter.py`**: A **Token-Bucket Rate Limiter** shared across all tools to prevent external API threshold penalties.
+    *   *Default caps*: Gmail (0.5 calls/sec), DuckDuckGo (1.0 calls/sec), STT (2.0 calls/sec).
+    *   *Modes*: Supports a "soft wait" (blocks the routine until the bucket refills) or "hard fail" (raises `RateLimitError` immediately).
+*   **`exceptions.py`**: Defines domain errors like `ToolError`, `AuthError`, `RateLimitError`, `ValidationError`, and `ExternalAPIError`.
+*   **`response_parser.py`**: Enforces a strict response shape:
+    *   `ok(data, message)`: Standard success.
+    *   `err(message, code, details)`: Custom error shapes.
+    *   `paginated(items, total, page, page_size)`: Handles large lists (e.g. Gmail inbox).
+    *   `from_exception(exc)`: Middleware helper to auto-convert Python exceptions into clean JSON errors.
+
+---
+
+## 🛠️ FastMCP Tool Reference
+
+The following tools are registered on the FastMCP instance and are consumable by the WebRTC agent:
+
+### 1. Speech-to-Text
+#### `stt(audio_bytes: str | bytes)`
+Transcribes audio data using the preloaded Whisper model.
+*   **Arguments**: WAV audio segment (raw binary bytes or Base64-encoded string).
+*   **Response Shape**:
+    ```json
+    {
+      "status": "ok",
+      "timestamp": "2026-05-25T14:46:09Z",
+      "data": "The transcribed candidate text output."
+    }
+    ```
+
+### 2. Email Automation
+#### `send_email(subject: str, body: str, to_email: str)`
+Delivers an outbound message via SMTP.
+*   **Arguments**: Target email address, subject line, plain text body.
+
+#### `list_inbox(limit: int = 10)`
+Lists recent inbox items via Gmail API.
+*   **Arguments**: Maximum items to return (capped at 50).
+*   **Response Shape**: Standard `paginated()` envelope containing message IDs, sender info, dates, and preview snippets.
+
+#### `read_email(email_id: str)`
+Retrieves a single email message.
+*   **Arguments**: Unique Gmail Message ID.
+*   **Response**: Decoded plain text body, subject, date, sender, and recipient lists.
+
+#### `reply_to_email(email_id: str, body: str)`
+Constructs a conversational reply using email headers.
+*   **Arguments**: Original Gmail Message ID, plain text reply content.
+
+#### `draft_reply(original_subject: str, original_body: str, tone: str = "professional")`
+Generates a plain-text draft reply using a local prompt router.
+
+### 3. Calendar Scheduling
+#### `create_calendar_event(title: str, date: str, time: str, duration_minutes: int, description: str = "", attendees: list = None)`
+Schedules an event in Google Calendar, with automatic ICS fallback.
+*   **Arguments**: Event title, ISO date string (`YYYY-MM-DD`), time (`HH:MM`), duration in minutes, description, and list of attendee emails.
+*   **Response**:
+    ```json
+    {
+      "status": "ok",
+      "data": {
+        "provider": "google" | "ics_fallback",
+        "google_event": { ... },
+        "ics": "BEGIN:VCALENDAR...",
+        "fallback_reason": null | "Google Credentials Offline"
+      }
+    }
+    ```
+
+#### `load_calendar_events(scope: str = "today", ics_content: str = "", include_google: bool = true)`
+Aggregates scheduled events from Google Calendar and optional custom `.ics` files.
+
+### 4. Internet Search
+#### `duckduckgo_search(query: str, max_results: int = 5)`
+Performs an anonymous search using DuckDuckGo.
+*   **Response**: List of items containing title, source URL, and text snippet.
+
+---
+
+## 🛠️ Step-by-Step Google OAuth & SMTP Setup Tutorial
+
+To use Gmail and Google Calendar tools, configure a test application in the Google Cloud Console:
+
+### Step 1: Create a Google Cloud Project
+1.  Open the [Google Cloud Console](https://console.cloud.google.com/).
+2.  Click the Project Dropdown in the top navigation bar and select **New Project**.
+3.  Name it `AI-RTC-Agent-MCP` and click **Create**.
+
+### Step 2: Enable Google APIs
+1.  Go to **APIs & Services** > **Library**.
+2.  Search for **Gmail API** and click **Enable**.
+3.  Search for **Google Calendar API** and click **Enable**.
+
+### Step 3: Configure the OAuth Consent Screen
+1.  Go to **APIs & Services** > **OAuth consent screen**.
+2.  Select **External** for the User Type, and click **Create**.
+3.  Provide the mandatory details:
+    *   **App name**: `AI RTC Voice Agent`
+    *   **User support email**: Your own Gmail address.
+    *   **Developer contact info**: Your own Gmail address.
+4.  Click **Save and Continue** (skip adding scopes for now).
+5.  On the **Test Users** panel, click **+ Add Users** and enter your exact Gmail address.
+    > [!IMPORTANT]
+    > You must add your email as a Test User, or Google will block your login attempts during setup.
+6.  Click **Save and Continue** to finish.
+
+### Step 4: Download Credentials File
+1.  Go to **APIs & Services** > **Credentials**.
+2.  Click **+ Create Credentials** at the top of the page, and select **OAuth client ID**.
+3.  Set the **Application type** to **Desktop app**.
+4.  Set the name to `Voice Agent Client`, then click **Create**.
+5.  In the confirmation modal, click **Download JSON**.
+6.  Rename the downloaded file to exactly **`credentials.json`** and save it inside this `mcp/` directory.
+
+### Step 5: Authorize and Generate `token.json`
+With the client credentials in place, generate your access token:
+1.  Run the token generator script from this directory:
+    ```bash
+    python get_token.py
+    ```
+2.  **What happens**:
+    *   A local web browser tab will open, pointing to Google's authentication page.
+    *   Log in using the Gmail account you configured as a test user.
+    *   Click **Advanced** > **Go to AI RTC Voice Agent (unsafe)** to bypass Google's unverified app warning.
+    *   Grant the requested scopes (Gmail Modify and Google Calendar Full Write/Read Access).
+    *   A new file named **`token.json`** will be generated inside this `mcp/` folder. This token handles the authorized secure access.
+
+---
+
+## ⚙️ Environment Configuration
+
+Copy `.env.example` to `.env` and configure your settings:
 ```bash
 cp .env.example .env
 ```
 
-Then fill in the values you need.
+| Variable | Default Value | Description |
+| :--- | :--- | :--- |
+| `MAIL_HOST` | `smtp.gmail.com` | Outbound SMTP server address. |
+| `MAIL_PORT` | `587` | Port used for SMTP (587 for STARTTLS, 465 for SSL). |
+| `MAIL_USERNAME` | `your-email@gmail.com` | Outbound email sender username. |
+| `MAIL_PASSWORD` | `your-app-password` | Gmail App Password (not your primary account password). |
+| `MAIL_ENCRYPTION` | `false` | Set to `true` for Port 465 (SSL), `false` for Port 587 (STARTTLS). |
+| `GMAIL_TOKEN_FILE` | `token.json` | Relative path to the generated Gmail/Calendar OAuth token. |
+| `GMAIL_SENDER` | `your-email@gmail.com` | Matches the Gmail user account associated with the OAuth token. |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Base URL for local Ollama LLM integration. |
+| `GOOGLE_API_KEY` | `""` | Optional Google Gemini developer API key. |
+| `OPENAI_API_KEY` | `""` | Optional OpenAI primary API key. |
 
-### 4. Start the server
+---
 
-```bash
-python main.py
-```
+## 🧪 Testing
 
-The FastMCP server will run on:
-
-- `http://localhost:8005`
-- SSE transport enabled through FastMCP
-
-### 5. Run tests
-
+To run the complete MCP tools validation suite, execute the following from the `mcp/` directory:
 ```bash
 pytest tests/ -v
 ```
 
-The MCP test suite now has two quality-of-life improvements:
-
-- STT uses lazy Whisper model loading, so pytest collection stays fast and does not load the model before a test actually needs it.
-- tests print live progress with a cleaner runner-style output while they execute.
-
-## Environment Variables
-
-Use `mcp/.env` for local configuration.
-
-```env
-MAIL_HOST=smtp.gmail.com
-MAIL_PORT=587
-MAIL_USERNAME=your-email@gmail.com
-MAIL_PASSWORD=your-app-password
-MAIL_ENCRYPTION=false
-
-GMAIL_TOKEN_FILE=token.json
-GMAIL_SENDER=your-email@gmail.com
-GMAIL_API=
-
-OLLAMA_BASE_URL=
-GOOGLE_API_KEY=
-OPENAI_API_KEY=
-```
-
-### Variable notes
-
-- `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD` are used by SMTP tools.
-- `MAIL_ENCRYPTION` is treated in code as a boolean.
-- Use `true` for SSL-style SMTP.
-- Use `false` for STARTTLS on port `587`.
-- `GMAIL_TOKEN_FILE` points to the OAuth token file used by Gmail API tools.
-- `GMAIL_SENDER` should usually be the same Gmail account you authorized.
-- `GMAIL_API` can stay empty unless you want to override the default Gmail API URL.
-
-## Gmail Setup Tutorial
-
-The email tools use two different auth paths:
-
-- SMTP credentials for sending mail
-- Gmail OAuth for reading inbox messages with the Gmail API
-
-That means you need both:
-
-1. `credentials.json`
-2. `token.json`
-
-### Step 1. Create the Google Cloud project
-
-1. Open the Google Cloud Console.
-2. Create a new project, or choose an existing one.
-3. Enable the Gmail API for that project.
-
-### Step 2. Configure the OAuth consent screen
-
-1. Go to `APIs & Services` -> `OAuth consent screen`.
-2. Choose `External` if this is a personal/test project.
-3. Fill in the app name and required fields.
-4. Add your Gmail account as a test user if Google asks for it.
-
-### Step 3. Create the OAuth client credentials file
-
-1. Go to `APIs & Services` -> `Credentials`.
-2. Click `Create Credentials`.
-3. Choose `OAuth client ID`.
-4. Select `Desktop app`.
-5. Download the JSON file.
-6. Rename it to `credentials.json`.
-7. Place it inside the `mcp/` folder.
-
-This `credentials.json` file is what you meant by the mail cert. In this project it is the Google OAuth client credentials file used to create the Gmail token.
-
-### Step 4. Generate `token.json`
-
-Run this once from inside `mcp/`:
-
-```bash
-python get_token.py
-```
-
-What happens:
-
-- a browser window opens
-- you sign in with the Gmail account you want to use
-- you approve Gmail access
-- the script writes `token.json` in the `mcp/` directory
-
-The script requests this scope:
-
-- `https://www.googleapis.com/auth/gmail.modify`
-
-That scope allows inbox listing, reading messages, and related Gmail actions.
-
-### Step 5. Point `.env` to the token
-
-```env
-GMAIL_TOKEN_FILE=token.json
-GMAIL_SENDER=your-email@gmail.com
-```
-
-### Step 6. Configure SMTP for sending mail
-
-For Gmail SMTP you will usually use:
-
-```env
-MAIL_HOST=smtp.gmail.com
-MAIL_PORT=587
-MAIL_USERNAME=your-email@gmail.com
-MAIL_PASSWORD=your-google-app-password
-MAIL_ENCRYPTION=false
-```
-
-Important:
-
-- do not use your normal Gmail password here if the account requires App Passwords
-- use a Google App Password for SMTP when needed
-- Gmail inbox tools use OAuth `token.json`, not the SMTP password
-
-## Tool Reference
-
-### `stt(audio_bytes)`
-
-Transcribes WAV audio with the local Whisper `small` model.
-
-- accepts raw bytes or base64-encoded audio
-- auto-detects base64 payloads
-- returns normalized success/error responses
-
-### `send_email(subject, body, to_email)`
-
-Sends email through SMTP.
-
-- requires `MAIL_HOST`, `MAIL_USERNAME`, and `MAIL_PASSWORD`
-- rate-limited through the shared limiter
-
-### `list_inbox(limit=10)`
-
-Lists recent Gmail inbox messages.
-
-- uses Gmail API
-- requires a valid `token.json`
-- maximum limit is capped in code
-
-### `read_email(email_id)`
-
-Fetches a Gmail message by id and returns:
-
-- subject
-- from
-- to
-- date
-- snippet
-- decoded plain-text body when available
-
-### `reply_to_email(email_id, body)`
-
-Builds a reply from the original message metadata and sends it through SMTP.
-
-### `draft_reply(original_subject, original_body, tone="professional")`
-
-Creates a simple reply draft string.
-
-### `duckduckgo_search(query, max_results=5)`
-
-Runs a DuckDuckGo search and returns structured results:
-
-- title
-- url
-- snippet
-
-## Shared Utility Layer
-
-The `utils/` package keeps tool behavior consistent.
-
-### `auth.py`
-
-- loads environment variables once
-- validates required credentials
-- loads and refreshes Gmail OAuth tokens
-
-### `exceptions.py`
-
-Defines custom exceptions:
-
-- `ToolError`
-- `AuthError`
-- `RateLimitError`
-- `ExternalAPIError`
-- `ValidationError`
-
-### `response_parser.py`
-
-Standardizes tool outputs through:
-
-- `ok(...)`
-- `err(...)`
-- `paginated(...)`
-- `from_exception(...)`
-
-### `rate_limiter.py`
-
-Implements per-tool token-bucket throttling for:
-
-- `gmail`
-- `duckduckgo`
-- `stt`
-- other named tools
-
-### `http_client.py`
-
-Provides shared async HTTP helpers with:
-
-- timeouts
-- retries
-- auth and rate-limit error mapping
-
-## Notes for Development
-
-- `main.py` imports `tools` so FastMCP registers the tool modules on startup.
-- `server.py` creates the FastMCP app with name `AI-RTC-Agent` on port `8005`.
-- `get_token.py` should only be run when you need to create or refresh the first OAuth token locally.
-- Whisper model loading is lazy in `tools/stt/stt.py`, which keeps imports and test collection lightweight.
-
-## Testing Experience
-
-Run the MCP tests from inside `mcp/`:
-
-```bash
-pytest tests/
-```
-
-You should now see live test progress in a cleaner format, for example:
-
-```text
-[ RUN ] Test successful speech-to-text transcription
-[ OK  ] Test successful speech-to-text transcription
-[ RUN ] Test successful DuckDuckGo search response mapping
-[ OK  ] Test successful DuckDuckGo search response mapping
-```
-
-This output is configured in `tests/conftest.py`.
-
-## Related Docs
-
-- [Workspace README](../README.md)
-- [Server README](../server/README.md)
-- [Client README](../client/README.md)
+*Note: The testing logs use a clean progress format defined in `tests/conftest.py` to print live progress details (e.g. `[ RUN ]` / `[ OK ]`) for each unit test.*

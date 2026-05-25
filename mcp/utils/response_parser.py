@@ -101,7 +101,7 @@ def from_exception(exc: Exception) -> dict:
         except Exception as e:
             return from_exception(e)
     """
-    from utils.exceptions import (
+    from .exceptions import (
         AuthError, RateLimitError, ExternalAPIError, ValidationError, ToolError
     )
 

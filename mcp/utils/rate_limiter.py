@@ -13,7 +13,8 @@ Usage:
 import asyncio
 import time
 from dataclasses import dataclass, field
-from utils.exceptions import RateLimitError
+
+from .exceptions import RateLimitError
 
 
 LIMITS: dict[str, float] = {
