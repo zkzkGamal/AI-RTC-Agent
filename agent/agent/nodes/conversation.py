@@ -1,13 +1,16 @@
 """
 Conversation Node
 -----------------
-Handles general chitchat and knowledge questions — no tool calls.
-Passes the full message history to the LLM and appends its reply.
+Resolves the user's latest message into a clean, context-enriched intent
+by injecting full conversation history and cross-turn memory into the CONV
+prompt. The output is stored in state['user_message'] and passed to the
+ROUTER node — it is NOT a user-facing reply.
 """
 import pathlib
 import logging
 import environ
-from langchain_core.messages import SystemMessage, AIMessage
+from langchain_core.messages import HumanMessage
+from langchain_core.prompts import ChatPromptTemplate
 from agent.llm.load_model import llm
 from core.loadPrompts import LoadPrompts
 
@@ -16,21 +19,56 @@ logger = logging.getLogger(__name__)
 _base = pathlib.Path(__file__).parent.parent.parent
 _e = environ.Env()
 _e.read_env(str(_base / ".env"))
+
 load_prompts = LoadPrompts()
+AGENT_MODE   = _e("AGENT_MODE", default="general")
 
-AGENT_MODE = _e("AGENT_MODE", default="general")
-_SYSTEM_PROMPT = load_prompts.load_prompt(f"router/{AGENT_MODE}.yaml")
-_SYSTEM = SystemMessage(content=_SYSTEM_PROMPT)
+_PARTIAL_PROMPT = load_prompts.load_partial_prompt(f"conv/{AGENT_MODE}.yaml")
 
+_TEMPLATE = ChatPromptTemplate.from_messages([
+    *_PARTIAL_PROMPT.format_prompt(
+        user_message         = "{user_message}",
+        conversation_history = "{conversation_history}",
+        last_route           = "{last_route}",
+        last_tool_result     = "{last_tool_result}",
+    ).to_messages(),
+    ("human", "{user_message}"),
+])
+
+_conv_chain = _TEMPLATE | llm
 
 
 def conversation(state: dict) -> dict:
-    """Generate a conversational reply and append it to messages."""
+    """
+    Resolve the user's latest message using full conversation context.
+    Writes the resolved intent to state['user_message'] for the router.
+    """
 
-    messages_with_sys = [_SYSTEM] + list(state["messages"])
-    response = llm.invoke(messages_with_sys)
+    last_message = state["messages"][-1]
+    raw_input    = (
+        last_message.content
+        if hasattr(last_message, "content")
+        else str(last_message)
+    )
 
-    ai_msg = AIMessage(content=response.content)
-    logger.info(f"[conversation] reply: {response.content[:20]}…")
+    prior_messages = state["messages"][:-1]
+    conversation_history = "\n".join(
+        f"{m.type.upper()}: {m.content}"
+        for m in prior_messages
+        if hasattr(m, "content")
+    ) or "No prior conversation."
 
-    return {"messages": state["messages"] + [ai_msg]}
+    last_route       = state.get("last_route", "") or ""
+    last_tool_result = state.get("last_tool_result", "") or ""
+
+    response = _conv_chain.invoke({
+        "user_message"        : raw_input,
+        "conversation_history": conversation_history,
+        "last_route"          : last_route,
+        "last_tool_result"    : last_tool_result,
+    })
+
+    resolved_message = response.content.strip()
+    logger.info(f"[conv] raw='{raw_input[:60]}…' → resolved='{resolved_message[:60]}…'")
+
+    return {"user_message": resolved_message}

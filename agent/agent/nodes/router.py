@@ -1,48 +1,59 @@
 """
 Router Node
 -----------
-This node uses a simple LLM prompt to determine the user's intent based on the content of their message. 
-The classified intent is stored in the state for downstream nodes to use in routing the conversation appropriately.
+Classifies the resolved user intent (from CONV) into a route string
+and stores it in state['route'] for downstream nodes.
+
+Reads from state['user_message'] — the context-enriched message produced
+by the CONV node — not the raw last message.
 """
-import pathlib , environ , logging
+import pathlib
+import environ
+import logging
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import HumanMessage
 from agent.llm.load_model import llm
 from core.IntentClassifier import get_intent
 from core.loadPrompts import LoadPrompts
-from langchain_core.messages import SystemMessage, HumanMessage
 
-
-
+logger      = logging.getLogger(__name__)
 load_prompts = LoadPrompts()
 
-
-logger = logging.getLogger(__name__)
-
 _base = pathlib.Path(__file__).parent.parent.parent
-_e = environ.Env()
+_e    = environ.Env()
 _e.read_env(str(_base / ".env"))
 
 AGENT_MODE = _e("AGENT_MODE", default="general")
-_SYSTEM_PROMPT = load_prompts.load_prompt(f"router/{AGENT_MODE}.yaml")
 
+_SYSTEM_MESSAGES = load_prompts.load_prompt(f"router/{AGENT_MODE}.yaml")
+
+_TEMPLATE = ChatPromptTemplate.from_messages([
+    *_SYSTEM_MESSAGES,
+    ("human", "{user_message}"),
+])
+
+_router_chain = _TEMPLATE | llm
 
 
 def router(state: dict) -> dict:
-    """Classify intent and store it in state['intent']."""
+    """
+    Classify the resolved user intent into a route.
+    Reads state['user_message'] (set by CONV node).
+    Writes state['route'] for ACT and tool nodes.
+    """
 
-    last_message = state["messages"][-1]
-    # Extract text whether it's a BaseMessage or a plain string
-    user_text = (
-        last_message.content
-        if hasattr(last_message, "content")
-        else str(last_message)
-    )
+    user_message = state.get("user_message") or ""
 
-    response = llm.invoke(
-        [
-            SystemMessage(content=_SYSTEM_PROMPT),
-            HumanMessage(content=user_text),
-        ]
-    )
-    intent = get_intent(response)
-    logger.info(f"[router] intent classified as: {intent!r}")
-    return {"intent": intent}
+    if not user_message:
+        last = state["messages"][-1]
+        user_message = (
+            last.content if hasattr(last, "content") else str(last)
+        )
+        logger.warning("[router] user_message empty — falling back to raw last message")
+
+    response = _router_chain.invoke({"user_message": user_message})
+    route    = get_intent(response)
+
+    logger.info(f"[router] '{user_message[:60]}…' → {route!r}")
+
+    return {"route": route}
