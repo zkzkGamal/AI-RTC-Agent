@@ -1,8 +1,10 @@
 import datetime
 import math
-import time
+import time , logging
 from zoneinfo import ZoneInfo
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class api_key_generator:
     def __init__(self, expire_time: int = 60):
@@ -45,6 +47,7 @@ class api_key_generator:
 
     def validate_api_key(self, api_key: str, grace_windows: int = 1) -> bool:
         try:
+            logging.info(f"Validating API key: {api_key}")
             suffix, timestamp_str, prefix = api_key.split("_")
             timestamp = int(timestamp_str)
             current_timestamp = self.create_value()
@@ -58,5 +61,6 @@ class api_key_generator:
             expected_suffix = self.generate_suffix(timestamp)
             expected_prefix = self.generate_prefix(timestamp)
             return suffix == expected_suffix and prefix == expected_prefix
-        except Exception:
+        except Exception as e:
+            logging.error(f"Error validating API key: {e}")
             return False

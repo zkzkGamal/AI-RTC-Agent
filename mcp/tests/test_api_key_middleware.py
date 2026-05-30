@@ -78,6 +78,36 @@ def test_build_sse_app_registers_api_key_middleware():
     assert any(m.cls is MCPApiKeyMiddleware for m in app.user_middleware)
 
 
+@pytest.mark.asyncio
+async def test_api_key_middleware_passes_asgi_messages_without_buffering():
+    messages = []
+
+    async def app(scope, receive, send):
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"", "more_body": False})
+
+    middleware = MCPApiKeyMiddleware(app=app, validator=lambda api_key: api_key == "valid-key")
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/sse",
+        "headers": [(b"x-api-key", b"valid-key")],
+    }
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message):
+        messages.append(message)
+
+    await middleware(scope, receive, send)
+
+    assert messages == [
+        {"type": "http.response.start", "status": 200, "headers": []},
+        {"type": "http.response.body", "body": b"", "more_body": False},
+    ]
+
+
 def _request_with_headers(headers: dict[str, str] | None = None) -> Request:
     raw_headers = [
         (key.lower().encode("latin-1"), value.encode("latin-1"))

@@ -24,6 +24,7 @@ import webrtcvad
 from mcp.client.sse import sse_client
 from mcp.client.session import ClientSession
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ─── Constants ──────────────────────────────────────────────────────
