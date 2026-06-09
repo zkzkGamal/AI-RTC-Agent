@@ -25,6 +25,9 @@ class LLMFactory:
         if MODEL_TYPE == "ollama":
             base_url = e("OLLAMA_BASE_URL", default="http://localhost:11434")
             LLMFactory.preload_ollama_model(model_name, base_url)
+            # Disable reasoning/thinking for ChatOllama to optimize response latency, unless explicitly enabled
+            reasoning_enabled = e.bool("OLLAMA_REASONING", default=False)
+            kwargs.setdefault("reasoning", reasoning_enabled)
         return llm_class(model=model_name, **kwargs)
     
     def preload_ollama_model(model_name: str, base_url: str):

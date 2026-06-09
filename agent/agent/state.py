@@ -13,6 +13,8 @@ Each field maps to a specific stage of the pipeline:
   - last_route            : route from the previous turn (used by CONV for context)
   - last_tool_result      : tool output from the previous turn (used by CONV for context)
   - error                 : error message if any node fails, for graceful fallback
+This structured state allows for clear data flow and context sharing across the entire agent pipeline, enabling more
+  coherent and informed decision-making by the agent.
 """
 
 from typing import Annotated, Sequence, Dict, Optional, List, Any
@@ -35,5 +37,7 @@ class AgentState(TypedDict):
     last_tool_result: Optional[str]
 
     pending_confirmation: Optional[Dict[str, Any]]
+    plan: Optional[str]
 
     error: Optional[str]
+

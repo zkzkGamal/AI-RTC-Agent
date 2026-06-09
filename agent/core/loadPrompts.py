@@ -23,7 +23,18 @@ class LoadPrompts:
         }
 
     def _resolve(self, prompt_path: str):
+        if prompt_path.startswith("conv/"):
+            prompt_path = "conversations/" + prompt_path[5:]
         path = self.base_path / "prompts" / prompt_path
+        if not path.exists():
+            if path.suffix == ".yaml":
+                alt_path = path.with_suffix(".yml")
+                if alt_path.exists():
+                    return load_prompt(alt_path)
+            elif path.suffix == ".yml":
+                alt_path = path.with_suffix(".yaml")
+                if alt_path.exists():
+                    return load_prompt(alt_path)
         return load_prompt(path)
 
     def load_prompt(self, prompt_path: str):

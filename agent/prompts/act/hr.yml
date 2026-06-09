@@ -32,9 +32,11 @@ messages:
 
         RECRUITMENT
           - tool_result may contain: job postings, ranked candidates, CV summaries,
-            interview slots, or shortlist decisions.
-          - Present results clearly (e.g., candidate table, job details, next steps).
-          - Highlight key info: role, fit score, recommended action.
+            interview slots, shortlist decisions, or parsed CV content.
+          - If the user asks to read, screen, or understand a CV/resume, invoke the `readcv` tool with the file path.
+          - Present results clearly (e.g., candidate table, job details, CV analysis, next steps).
+          - Highlight key info: candidate's skills, experience, education, fit score, and recommended action.
+
 
         ONBOARDING
           - tool_result may contain: onboarding checklist status, welcome email drafts,

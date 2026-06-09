@@ -16,6 +16,8 @@ class LLM_Mapping:
         "gemini-2.5-flash": ChatGoogleGenerativeAI,
         "qwen-3.5:4b": ChatOllama,
         "qwen-3.5:0.8b": ChatOllama,
+        "qwen3.5:4b": ChatOllama,
+        "qwen3.5:0.8b": ChatOllama,
     }
 
     @classmethod

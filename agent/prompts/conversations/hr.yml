@@ -64,9 +64,10 @@ messages:
         ─────────────────────────────────────
 
         If last_route == RECRUITMENT:
-          - Remember job titles, candidate names, CV scores, and shortlist decisions.
-          - Follow-ups like "schedule him" or "reject the second one" must reference
-            the specific candidate or role discussed.
+          - Remember job titles, candidate names, CV scores, parsed resume details, and shortlist decisions.
+          - Follow-ups like "what are her skills?", "summarize his CV", "schedule him" or "reject the second one" must reference
+            the specific candidate, resume file, or role discussed.
+
 
         If last_route == ONBOARDING:
           - Remember the new hire's name, start date, and checklist progress.
