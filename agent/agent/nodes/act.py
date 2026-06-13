@@ -26,6 +26,39 @@ from tools import (
 )
 
 logger = logging.getLogger(__name__)
+
+try:
+    from agent.sockets.sio import sio, active_user_id, active_session_id
+except ImportError:
+    sio = None
+    active_user_id = None
+    active_session_id = None
+
+async def emit_tool_event(tool_name: str, status: str, payload_data: dict = None):
+    if sio is not None:
+        user_id = active_user_id.get() if active_user_id else None
+        session_id = active_session_id.get() if active_session_id else None
+        try:
+            event_payload = {
+                "status": status,
+                "tool_name": tool_name,
+                "user_id": user_id,
+                "session_id": session_id,
+                **(payload_data or {})
+            }
+            # Emit to session room
+            if session_id:
+                await sio.emit(tool_name, event_payload, room=session_id)
+                await sio.emit(f"tool_{status}", event_payload, room=session_id)
+            # Emit to user room
+            if user_id:
+                await sio.emit(tool_name, event_payload, room=user_id)
+                await sio.emit(f"tool_{status}", event_payload, room=user_id)
+            # Broadcast
+            await sio.emit(tool_name, event_payload)
+            await sio.emit(f"tool_{status}", event_payload)
+        except Exception as e:
+            logger.error(f"Failed to emit tool socket event: {e}")
 load_prompts = LoadPrompts()
 
 _base = pathlib.Path(__file__).parent.parent.parent
@@ -67,6 +100,7 @@ async def execute(state: dict) -> dict:
     Paues and prompts for confirmation if a dangerous tool is triggered.
     """
     messages = list(state.get("messages", []))
+    initial_message_count = len(messages)
     pending = state.get("pending_confirmation")
     route = state.get("route", "DIRECT")
     plan = state.get("plan", "")
@@ -97,7 +131,8 @@ INSTRUCTIONS
    - Step 1: Call `duckduckgo_search` to find the news.
    - Step 2: Once you receive the search results, call `send_email` to email the results to the requested address.
 3. If a tool call fails or returns an error, do not loop indefinitely. Try to inform the user or finish.
-4. Do not output a final text summary until all required tool executions are complete.
+4. Do NOT call the same tool with the exact same arguments if it has already executed successfully in the conversation history. You should still proceed with subsequent steps and call other required tools sequentially (e.g. call search first, then call email with the search results).
+5. Do not output a final text summary until all required tool executions are complete.
 
 {plan_section}
 """
@@ -154,7 +189,9 @@ Return ONLY the final updated JSON dictionary. Do not include any explanation, b
                 
                 # Execute tool with updated arguments
                 tool_instance = _TOOL_MAP[tool_name]
+                await emit_tool_event(tool_name, "start", {"arguments": updated_args})
                 result = await tool_instance.ainvoke(updated_args)
+                await emit_tool_event(tool_name, "finished", {"result": str(result)})
             except Exception as e:
                 logger.error(f"[execute] Failed to modify tool arguments: {e}. Raw response: {content}")
                 result = f"Error: Failed to apply modifications: {e}"
@@ -163,7 +200,9 @@ Return ONLY the final updated JSON dictionary. Do not include any explanation, b
             try:
                 tool_instance = _TOOL_MAP[tool_name]
                 logger.info(f"[execute] Tool execution APPROVED. Calling tool '{tool_name}'...")
+                await emit_tool_event(tool_name, "start", {"arguments": tool_args})
                 result = await tool_instance.ainvoke(tool_args)
+                await emit_tool_event(tool_name, "finished", {"result": str(result)})
             except Exception as e:
                 logger.error(f"[execute] Tool '{tool_name}' failed: {e}")
                 result = f"Error: Tool execution failed: {e}"
@@ -171,31 +210,24 @@ Return ONLY the final updated JSON dictionary. Do not include any explanation, b
             logger.info(f"[execute] Tool execution REJECTED or unrecognized response.")
             result = "Error: Tool execution rejected by human."
 
-        # Create matching ToolMessage
         tool_message = ToolMessage(content=str(result), tool_call_id=tool_call_id)
         messages.append(tool_message)
-
-        # Clear pending confirmation
         pending = None
         state["pending_confirmation"] = None
 
-    # 2. ReAct reasoning & execution loop
     max_iterations = 5
     for iteration in range(max_iterations):
         model_inputs = system_messages + messages
         response = await llm_with_tools.ainvoke(model_inputs)
 
-        # Append LLM's response to the conversation scratchpad
         messages.append(response)
 
-        # If LLM doesn't request tool calls, we have finished reasoning
         if not response.tool_calls:
             logger.info("[execute] Reasoning complete. No tool calls requested.")
             break
 
         logger.info(f"[execute] LLM requested tool calls: {[tc['name'] for tc in response.tool_calls]}")
 
-        # Check for dangerous tool calls first to trigger HIL pause
         dangerous_call = None
         for call in response.tool_calls:
             if call["name"] in DANGEROUS_TOOLS:
@@ -210,7 +242,6 @@ Return ONLY the final updated JSON dictionary. Do not include any explanation, b
             }
             logger.warning(f"[execute] HIL Triggered! Pausing for dangerous tool: {dangerous_call['name']}")
             
-            # Format arguments in a clean, pretty key-value block matching user format
             args_str = ""
             for k, v in dangerous_call["args"].items():
                 if isinstance(v, list):
@@ -219,7 +250,6 @@ Return ONLY the final updated JSON dictionary. Do not include any explanation, b
             
             pretty_message = f"the response {dangerous_call['name']} the agrs is\n{args_str.strip()}"
             
-            # Append an AIMessage with the pretty message so it is presented to the user
             messages.append(AIMessage(content=pretty_message))
             
             return {
@@ -228,7 +258,6 @@ Return ONLY the final updated JSON dictionary. Do not include any explanation, b
                 "tool_results": pretty_message,
             }
 
-        # Execute all standard/safe tools requested in this turn
         for call in response.tool_calls:
             tool_name = call["name"]
             tool_args = call["args"]
@@ -239,20 +268,32 @@ Return ONLY the final updated JSON dictionary. Do not include any explanation, b
             else:
                 try:
                     tool_instance = _TOOL_MAP[tool_name]
+                    await emit_tool_event(tool_name, "start", {"arguments": tool_args})
                     result = await tool_instance.ainvoke(tool_args)
+                    await emit_tool_event(tool_name, "finished", {"result": str(result)})
                 except Exception as e:
                     logger.error(f"[execute] Tool '{tool_name}' failed: {e}")
                     result = f"Error: Tool execution failed: {e}"
 
-            # Append ToolMessage result
             messages.append(ToolMessage(content=str(result), tool_call_id=tool_call_id))
 
-    # Return final execution state
-    last_response = messages[-1].content if messages else ""
+    current_tool_msgs = [m for m in messages[initial_message_count:] if isinstance(m, ToolMessage)]
+    if current_tool_msgs:
+        combined_tool_results = "\n\n".join([f"Tool Output:\n{m.content}" for m in current_tool_msgs])
+        last_tool_val = current_tool_msgs[-1].content
+    else:
+        all_tool_msgs = [m for m in messages if isinstance(m, ToolMessage)]
+        if all_tool_msgs:
+            combined_tool_results = "\n\n".join([f"Tool Output:\n{m.content}" for m in all_tool_msgs])
+            last_tool_val = all_tool_msgs[-1].content
+        else:
+            combined_tool_results = ""
+            last_tool_val = ""
+
     return {
         "messages": messages,
-        "tool_results": last_response,
+        "tool_results": combined_tool_results,
         "last_route": route,
-        "last_tool_result": last_response,
+        "last_tool_result": last_tool_val,
         "pending_confirmation": pending,
     }

@@ -18,9 +18,10 @@ messages:
         - readcv: parse CV/resume files.
 
         Instructions:
-        1. Create a logical, step-by-step plan.
-        2. Keep the plan concise and action-oriented.
-        3. Do not execute the tools yourself. Only describe the steps.
+        1. Create a logical, step-by-step plan using ONLY the available tools listed above.
+        2. Reference the specific tool names (e.g. duckduckgo_search, list_inbox) that should be executed at each step.
+        3. Keep the plan concise and action-oriented.
+        4. Do not execute the tools yourself. Only describe the steps.
 
         Output format:
         Provide a bulleted list of steps. Nothing else.

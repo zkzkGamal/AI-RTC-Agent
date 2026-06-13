@@ -5,8 +5,9 @@ import pathlib
 
 # Ensure project paths are set up correctly
 project_root = pathlib.Path(__file__).parent.resolve()
-sys.path.insert(0, str(project_root.parent))
-sys.path.insert(0, str(project_root))
+sys.path.insert(0, str(project_root.parent.parent)) # Add AI-RTC-Agent root
+sys.path.insert(0, str(project_root.parent))        # Add agent folder root
+sys.path.insert(0, str(project_root))               # Add tests folder root
 
 print("1. Testing Key Generator...")
 from core.auth import api_key_generator_instance
@@ -30,7 +31,7 @@ print("Tool registration test for HR mode PASSED!\n")
 # Verify general mode works as expected
 # We reload environmental variables or check the logic directly
 print("3. Verification of Act Prompt Template Compilation...")
-print(f"Template prompt input variables: {hr_act._TEMPLATE_PROMPT.input_variables}")
+print(f"Template prompt input variables: {hr_act._PARTIAL_PROMPT.input_variables}")
 print("Act Prompt Template compilation test PASSED!\n")
 
 print("All Agent tools verification tests PASSED successfully!")

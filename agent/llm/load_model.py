@@ -30,6 +30,7 @@ class LLMFactory:
             kwargs.setdefault("reasoning", reasoning_enabled)
         return llm_class(model=model_name, **kwargs)
     
+    # pyrefly: ignore [invalid-annotation]
     def preload_ollama_model(model_name: str, base_url: str):
         logger.info(f"Preloading Ollama model: {model_name} in memory at startup...")
         try:
@@ -59,10 +60,11 @@ elif MODEL_TYPE == "google":
 
 llm = LLMFactory.create_llm(
     model_name=e("LLM_MODEL", default="gpt-3.5-turbo"),
-    temperature=0.7,
-    max_tokens=2048,
+    temperature=0.5,
+    max_tokens=1024,
     top_p=0.9,
     frequency_penalty=0,
     presence_penalty=0,
     api_key=api_key,
+    num_ctx=1024,
 )

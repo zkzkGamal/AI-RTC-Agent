@@ -8,8 +8,8 @@ import time , logging
 
 # Ensure project paths are set up correctly
 project_root = pathlib.Path(__file__).parent.resolve()
+sys.path.insert(0, str(project_root.parent.parent))
 sys.path.insert(0, str(project_root.parent))
-sys.path.insert(0, str(project_root))
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
