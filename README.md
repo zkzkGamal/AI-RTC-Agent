@@ -65,11 +65,11 @@ sequenceDiagram
         alt Speech Onset Detected (>= 6/10 active frames)
             Server->>Server: Starts accumulating raw 48kHz audio into speech buffer
         else Silence Offset Detected (<= 1/10 active frames)
-            Server->>Server: Initiates 2.0-second silence countdown
+            Server->>Server: Initiates 1.0-second silence countdown
         end
     end
 
-    Note over Server: 2.0s Silence Threshold Reached (Utterance Completed)
+    Note over Server: 1.0s Silence Threshold Reached (Utterance Completed)
     Server->>Server: Wraps accumulated raw PCM bytes with a valid WAV header & encodes to Base64
     Server->>Server: Generates dynamic, time-locked X-API-Key
     Server->>MCP: POST /sse/stt with Base64 audio + dynamic X-API-Key header
@@ -354,7 +354,7 @@ npm run dev
 2.  Click the glowing **Start Connection** button.
 3.  Provide microphone access permissions when prompted by your browser.
 4.  Speak naturally into your microphone.
-5.  When you stop speaking (exactly **2.0 seconds** of silence), the WebRTC server's state machine will trigger, segmenting the audio, validating authorization via the dynamic time-locked API key, calling the Whisper STT tool, and instantly pushing the transcription back to your dashboard feed.
+5.  When you stop speaking (exactly **1.0 seconds** of silence), the WebRTC server's state machine will trigger, segmenting the audio, validating authorization via the dynamic time-locked API key, calling the Whisper STT tool, and instantly pushing the transcription back to your dashboard feed.
 
 ---
 

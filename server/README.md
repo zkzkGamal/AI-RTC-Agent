@@ -136,7 +136,7 @@ Upon connection, the server listens for data channel handshakes. If a channel na
 | Parameter | Default Value | Description |
 | :--- | :--- | :--- |
 | `sample_rate` | `48000` | Target incoming WebRTC PCM audio rate (Hz). |
-| `silence_threshold` | `2.0` | Seconds of continuous silence before transcribing. |
+| `silence_threshold` | `1.0` | Seconds of continuous silence before transcribing. |
 | `VAD_SAMPLE_RATE` | `16000` | Sample rate used for VAD analysis (Hz). |
 | `VAD_FRAME_DURATION_MS` | `30` | Duration of each VAD classification frame (ms). |
 | `VAD_WINDOW_SIZE` | `10` | Number of recent frames stored in the sliding hysteresis window. |
