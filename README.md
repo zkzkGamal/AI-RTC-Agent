@@ -4,6 +4,22 @@ An advanced, high-performance real-time conversational voice agent workspace. Th
 
 The workspace integrates a responsive React dashboard, an asynchronous WebRTC server, a FastAPI LangGraph agent, and a **FastMCP** server for heavy-duty speech-to-text (STT), secure mail/calendar integration, and real-time web search.
 
+## 🎬 Demos
+
+### 1. Launching and Running the Agent
+Watch the initialization of the four-tier architecture via `./start.sh` and starting the WebRTC session:
+
+[View Video (ai-rtc_start_1.3x.mp4)](assets/ai-rtc_start_1.3x.mp4)
+
+<video src="assets/ai-rtc_start_1.3x.mp4" controls width="100%"></video>
+
+### 2. Real-Time Conversation and Tool Call Execution
+Watch a real-time conversation demonstrating Voice Activity Detection, Whisper translation, and live Socket.IO execution events for the web search tool:
+
+[View Video (test-real-time.mp4)](assets/test-real-time.mp4)
+
+<video src="assets/test-real-time.mp4" controls width="100%"></video>
+
 ---
 
 ## ✨ Key Technical Highlights
