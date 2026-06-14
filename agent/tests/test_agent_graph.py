@@ -208,6 +208,71 @@ async def run_tests():
         assert result.get("tool_results") is not None, "Failed to get real list_inbox response"
     
     logger.info("Test 5 PASSED!")
+    
+    
+    # TEST 6: Create a calendar event for a walk using the same email address
+    logger.info("\n--- Test 6: Create calendar event for a walk ---")
+    state = {
+        "messages": [HumanMessage(content="Create a calendar event for a walk tomorrow at 7 AM and include zkariagamal169@gmail.com as the attendee")],
+        "user_message": "Create a calendar event for a walk tomorrow at 7 AM and include zkariagamal169@gmail.com as the attendee",
+        "route": None,
+        "plan": None,
+        "tool_calls": None,
+        "tool_results": None,
+        "pending_confirmation": None,
+        "error": None
+    }
+
+    result = await graph.ainvoke(state)
+    logger.info(f"Routed To: {result.get('route')}")
+    logger.info(f"Plan Drafted:\n{result.get('plan')}")
+    logger.info(f"Pending Confirmation: {result.get('pending_confirmation')}")
+    logger.info(f"Execution Output: {result.get('tool_results')}")
+
+    assert result.get("route") in ("PLAN", "DIRECT"), "Failed to route calendar event request"
+    assert result.get("pending_confirmation") is not None, "Failed to trigger HIL on dangerous tool (create_calendar_event)"
+    assert "create_calendar_event" in result["pending_confirmation"]["tool_name"], "Incorrect dangerous calendar tool flagged"
+    logger.info("Test 6 PASSED!")
+
+    # TEST 7: Resume calendar event creation on approval
+    logger.info("\n--- Test 7: Resuming calendar event creation on approval ---")
+    resumed_messages = list(result["messages"]) + [HumanMessage(content="Yes, please approve the calendar event")]
+    resumed_state = {
+        "messages": resumed_messages,
+        "user_message": "Yes, please approve the calendar event",
+        "route": result.get("route"),
+        "plan": result.get("plan"),
+        "tool_calls": result.get("tool_calls"),
+        "tool_results": result.get("tool_results"),
+        "pending_confirmation": result.get("pending_confirmation"),
+        "error": None
+    }
+
+    final_result = await graph.ainvoke(resumed_state)
+    logger.info(f"Resumed Result Pending Confirmation: {final_result.get('pending_confirmation')}")
+    logger.info(f"Final response summary: {final_result['messages'][-1].content[:120]}...")
+    assert final_result.get("pending_confirmation") is None, "Failed to clear pending confirmation on calendar approval"
+    logger.info("Test 7 PASSED!")
+
+    # TEST 8: Resume calendar event creation with parameter modification
+    logger.info("\n--- Test 8: Resuming calendar event creation with parameter modification ---")
+    mod_messages = list(result["messages"]) + [HumanMessage(content="change the time to 8 AM and keep the same attendee")]
+    mod_state = {
+        "messages": mod_messages,
+        "user_message": "change the time to 8 AM and keep the same attendee",
+        "route": result.get("route"),
+        "plan": result.get("plan"),
+        "tool_calls": result.get("tool_calls"),
+        "tool_results": result.get("tool_results"),
+        "pending_confirmation": result.get("pending_confirmation"),
+        "error": None
+    }
+
+    mod_result = await graph.ainvoke(mod_state)
+    logger.info(f"Modified Result Pending Confirmation: {mod_result.get('pending_confirmation')}")
+    logger.info(f"Final response summary: {mod_result['messages'][-1].content[:120]}...")
+    assert mod_result.get("pending_confirmation") is None, "Failed to clear pending confirmation on calendar modification"
+    logger.info("Test 8 PASSED!")
 
     logger.info("\n==================================================")
     logger.info("ALL STATE MACHINE FLOW TESTS COMPLETED")
