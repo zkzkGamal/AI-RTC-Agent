@@ -16,6 +16,7 @@ messages:
         - POLICY_LOOKUP    → company policies, HR rules, compliance questions, labor law
         - EMAIL            → sending or reading HR-related emails or notifications
         - CALENDAR         → scheduling interviews, meetings, reviews, or HR events
+        - WEB_SEARCH       → searching the web for current news, facts, external information, or general queries
         - CHAT             → general HR advice, explanations, writing help, chitchat
 
         Rules:
@@ -34,6 +35,7 @@ messages:
         - Employee data or contracts → EMPLOYEE_RECORDS
         - Email actions → EMAIL
         - Scheduling → CALENDAR
+        - Web search, news, facts, weather, stock prices, or external lookups → WEB_SEARCH
         - Everything else → CHAT
 
         Output format (STRICT):

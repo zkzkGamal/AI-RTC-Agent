@@ -12,7 +12,8 @@ messages:
         - PLAN   → The request is complex and requires multiple tool calls or coordination (e.g., "search the web for X and email the summary to Y", "check my schedule and book an interview for the candidates found in my inbox", "search tech news and email it to me").
 
         Rules:
-        - Strictest Rule: If the user request contains multiple actions, steps, or coordinating conjunctions like "and", "then", or "after that" (e.g., "search tech news AND email it", "check my schedule AND book an interview"), it MUST be classified as PLAN.
+        - Strictest Rule 1: If the user request contains multiple actions, steps, or coordinating conjunctions like "and", "then", or "after that" (e.g., "search tech news AND email it", "check my schedule AND book an interview"), it MUST be classified as PLAN.
+        - Strictest Rule 2: If the request asks for search, live information, current events, news, stock prices, weather, facts, or anything requiring an external/web lookup, it MUST be classified as DIRECT (or PLAN if multi-step) because it requires tools.
         - Do NOT answer the request.
         - Do NOT explain your decision.
         - ONLY return one of the words: CONV, DIRECT, PLAN.

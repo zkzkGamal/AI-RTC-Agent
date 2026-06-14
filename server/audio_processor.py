@@ -51,7 +51,7 @@ class AudioSession:
     - After saving, resets and continues listening (loop)
     """
 
-    def __init__(self, session_id: str, sample_rate: int = 48000, silence_threshold: float = 2.0):
+    def __init__(self, session_id: str, sample_rate: int = 48000, silence_threshold: float = 1.0):
         self.session_id = session_id
         self.sample_rate = sample_rate
         self.silence_threshold = silence_threshold   # seconds of silence before saving
@@ -73,12 +73,10 @@ class AudioSession:
         self._speech_buffer = bytearray()            # Raw PCM accumulated during active speech
         self._utterance_count = 0
 
-        self._output_dir = os.path.join("utterances", session_id)
-        os.makedirs(self._output_dir, exist_ok=True)
-
+        # running in-memory only, no disk writing
         self.datachannel = None
 
-        logger.info(f"[{self.session_id}] AudioSession created  →  {self._output_dir}")
+        logger.info(f"[{self.session_id}] AudioSession created (running in-memory only)")
 
     # ─── Public API ─────────────────────────────────────────────────
 
@@ -187,22 +185,16 @@ class AudioSession:
         return decimated.tobytes()
 
     async def _save_utterance(self) -> None:
-        """Save the speech buffer as a WAV file."""
+        """Process the speech buffer in memory (does not write to disk)."""
         if not self._speech_buffer:
             return
 
         self._utterance_count += 1
-        timestamp = int(time.time() * 1000)
-        filename = os.path.join(self._output_dir, f"utt_{timestamp}.wav")
         data = bytes(self._speech_buffer)
         duration = len(data) / (self.sample_rate * 2)  # 2 bytes per sample
 
-        # Write in thread to avoid blocking the event loop
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self._write_wav, filename, data)
-
         logger.info(
-            f"[{self.session_id}] 💾  Utterance #{self._utterance_count} saved → {filename} "
+            f"[{self.session_id}] 🎙️  Utterance #{self._utterance_count} processed in memory "
             f"({len(data):,} bytes / {duration:.2f}s)"
         )
         

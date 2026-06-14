@@ -78,6 +78,8 @@ def conversation(state: dict) -> dict:
     if route == "CONV":
         logger.info("[conversation] Processing direct conversation...")
         response = _conv_chain.invoke({
+            "name": name,
+            "home": home,
             "user_message": user_text,
             "conversation_history": conversation_history,
             "last_route": last_route,
@@ -88,12 +90,24 @@ def conversation(state: dict) -> dict:
         # If there is a plan, prepend it to the tool results for the actor synthesis
         combined_results = f"Plan:\n{plan}\n\nExecution Results:\n{tool_results}" if plan else tool_results
         response = _act_chain.invoke({
+            "name": name,
+            "home": home,
             "route": intent,
             "user_message": user_text,
             "tool_result": combined_results,
         })
 
     final_message = response.content.strip()
+
+    # Clean up "Resolved Message:" prefix and surrounding quotes
+    import re
+    cleaned = final_message
+    cleaned = re.sub(r'^(?:\*\*|)?Resolved\s+Message(?:\*\*|)?:\s*', '', cleaned, flags=re.IGNORECASE)
+    cleaned = cleaned.strip()
+    if (cleaned.startswith('"') and cleaned.endswith('"')) or (cleaned.startswith("'") and cleaned.endswith("'")):
+        cleaned = cleaned[1:-1].strip()
+    final_message = cleaned
+
     logger.info(f"[conversation] Final output generated: {final_message[:120]}...")
 
     # Return state updates

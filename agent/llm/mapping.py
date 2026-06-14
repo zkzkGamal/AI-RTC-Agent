@@ -18,6 +18,10 @@ class LLM_Mapping:
         "qwen-3.5:0.8b": ChatOllama,
         "qwen3.5:4b": ChatOllama,
         "qwen3.5:0.8b": ChatOllama,
+        "qwen3.5:2b-q4_K_M": ChatOllama,
+        "qwen3.5:4b-q4_K_M": ChatOllama,
+        "qwen3.5:6b-q4_K_M": ChatOllama,
+        "qwen3.5:8b-q4_K_M": ChatOllama,
     }
 
     @classmethod

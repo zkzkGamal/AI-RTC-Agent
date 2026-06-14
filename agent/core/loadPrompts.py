@@ -19,7 +19,7 @@ class LoadPrompts:
         self._static = {
             "home"        : os.path.expanduser("~"),
             "project_root": str(self.base_path),
-            "name"        : "",
+            "name"        : "AI-RTC-Agent",
         }
 
     def _resolve(self, prompt_path: str):

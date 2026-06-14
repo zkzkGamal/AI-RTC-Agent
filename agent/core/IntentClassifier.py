@@ -36,6 +36,7 @@ _ROUTES = {
         "POLICY_LOOKUP",
         "EMAIL",
         "CALENDAR",
+        "WEB_SEARCH",
         "CHAT",
     },
 }

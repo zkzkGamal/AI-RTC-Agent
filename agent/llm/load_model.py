@@ -60,11 +60,10 @@ elif MODEL_TYPE == "google":
 
 llm = LLMFactory.create_llm(
     model_name=e("LLM_MODEL", default="gpt-3.5-turbo"),
-    temperature=0.5,
+    temperature=0.2,
     max_tokens=1024,
     top_p=0.9,
     frequency_penalty=0,
     presence_penalty=0,
     api_key=api_key,
-    num_ctx=1024,
 )
