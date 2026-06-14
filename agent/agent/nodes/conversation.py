@@ -56,6 +56,7 @@ def conversation(state: dict) -> dict:
     """
     messages = list(state.get("messages", []))
     route = state.get("route", "CONV")
+    intent = state.get("intent", "CHAT")
     plan = state.get("plan", "")
     tool_results = state.get("tool_results", "")
 
@@ -83,11 +84,11 @@ def conversation(state: dict) -> dict:
             "last_tool_result": last_tool_result,
         })
     else:
-        logger.info(f"[conversation] Synthesizing tool outputs for route: {route}")
+        logger.info(f"[conversation] Synthesizing tool outputs for intent: {intent}")
         # If there is a plan, prepend it to the tool results for the actor synthesis
         combined_results = f"Plan:\n{plan}\n\nExecution Results:\n{tool_results}" if plan else tool_results
         response = _act_chain.invoke({
-            "route": route,
+            "route": intent,
             "user_message": user_text,
             "tool_result": combined_results,
         })

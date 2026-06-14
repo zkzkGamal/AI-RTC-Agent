@@ -29,6 +29,7 @@ class AgentState(TypedDict):
     user_message: Optional[str]
 
     route: Optional[str]
+    intent: Optional[str]
 
     tool_calls: Optional[List[Dict[str, str]]]
     tool_results: Optional[str]

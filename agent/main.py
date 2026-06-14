@@ -3,16 +3,30 @@ import pathlib
 import sys
 import logging
 import uvicorn
+import socketio
+from starlette.routing import Router as StarletteRouter
+
+
+_original_router_init = StarletteRouter.__init__
+
+
+def _compat_router_init(self, *args, **kwargs):
+    kwargs.pop("on_startup", None)
+    kwargs.pop("on_shutdown", None)
+    return _original_router_init(self, *args, **kwargs)
+
+
+StarletteRouter.__init__ = _compat_router_init
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import socketio
 
 # Setup paths for local package resolution
 project_root = pathlib.Path(__file__).parent.resolve()
 sys.path.insert(0, str(project_root.parent))
 sys.path.insert(0, str(project_root))
 
-from agent.api import router
+from agent.api import register_routes
 from agent.sockets.sio import sio
 
 logging.basicConfig(level=logging.INFO)
@@ -33,8 +47,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include the HTTP API router
-app.include_router(router)
+# Register the HTTP API routes directly on the app.
+register_routes(app)
 
 socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
 

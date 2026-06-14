@@ -103,6 +103,7 @@ async def execute(state: dict) -> dict:
     initial_message_count = len(messages)
     pending = state.get("pending_confirmation")
     route = state.get("route", "DIRECT")
+    intent = state.get("intent", "CHAT")
     plan = state.get("plan", "")
 
     # Get details for formatting act system instructions
@@ -127,6 +128,7 @@ INSTRUCTIONS
 1. Use the available tools (such as searching or sending/replying to emails) to fulfill the user's request:
    - User Request: {user_text}
    - Classified Route: {route}
+   - Business Intent: {intent}
 2. If the task has multiple steps (for example, "search tech news and email it"), you MUST call the tools sequentially:
    - Step 1: Call `duckduckgo_search` to find the news.
    - Step 2: Once you receive the search results, call `send_email` to email the results to the requested address.
@@ -293,7 +295,7 @@ Return ONLY the final updated JSON dictionary. Do not include any explanation, b
     return {
         "messages": messages,
         "tool_results": combined_tool_results,
-        "last_route": route,
+        "last_route": intent,
         "last_tool_result": last_tool_val,
         "pending_confirmation": pending,
     }

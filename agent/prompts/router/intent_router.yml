@@ -9,9 +9,10 @@ messages:
 
         - CONV   → The request is conversational, a simple question that does not require tools, a chitchat message, advice, or general explanation.
         - DIRECT → The request is a direct, single tool call (e.g., "search for tech news", "check my email", "show my calendar events today", "read candidate CV at /path").
-        - PLAN   → The request is complex and requires multiple tool calls or coordination (e.g., "search the web for X and email the summary to Y", "check my schedule and book an interview for the candidates found in my inbox").
+        - PLAN   → The request is complex and requires multiple tool calls or coordination (e.g., "search the web for X and email the summary to Y", "check my schedule and book an interview for the candidates found in my inbox", "search tech news and email it to me").
 
         Rules:
+        - Strictest Rule: If the user request contains multiple actions, steps, or coordinating conjunctions like "and", "then", or "after that" (e.g., "search tech news AND email it", "check my schedule AND book an interview"), it MUST be classified as PLAN.
         - Do NOT answer the request.
         - Do NOT explain your decision.
         - ONLY return one of the words: CONV, DIRECT, PLAN.
