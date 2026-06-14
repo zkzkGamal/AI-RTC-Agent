@@ -15,9 +15,8 @@ from .exceptions import AuthError
 from google.oauth2.credentials import Credentials as GoogleCredentials
 from google.auth.transport.requests import Request
 
-
-load_dotenv()
 MCP_DIR = Path(__file__).resolve().parents[1]
+load_dotenv(dotenv_path=MCP_DIR / ".env")
 
 
 @dataclass

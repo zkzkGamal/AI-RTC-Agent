@@ -14,9 +14,10 @@ from dotenv import load_dotenv
 from datetime import datetime
 
 
+from pathlib import Path
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-load_dotenv()
+load_dotenv(dotenv_path=Path(__file__).resolve().parents[1] / ".env")
 calendar_service = calendar_service()
 
 class google_calendar_service:

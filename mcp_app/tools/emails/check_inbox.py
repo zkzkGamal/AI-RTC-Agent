@@ -23,8 +23,9 @@ except ModuleNotFoundError:
     from utils.rate_limiter import rate_limiter
 from service.create_header import _headers
 
+from pathlib import Path
 logger = logging.getLogger(__name__)
-load_dotenv()
+load_dotenv(dotenv_path=Path(__file__).resolve().parents[2] / ".env")
 
 GMAIL_API = os.getenv("GMAIL_API_URL", "https://gmail.googleapis.com/gmail/v1/users/me")
 

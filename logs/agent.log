@@ -1,0 +1,9 @@
+INFO:agent.service.chat:SQLite database initialized successfully.
+INFO:     Started server process [313225]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+Successfully saved agent graph visualization to: /home/aloha-zkaria/AI-RTC-Agent/agent/agent_graph.png
+INFO:     127.0.0.1:34978 - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:34988 - "GET /api/sessions/candidate_user_z HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34994 - "GET /api/sessions/candidate_user_z HTTP/1.1" 200 OK

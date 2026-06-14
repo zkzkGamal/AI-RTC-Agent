@@ -1,4 +1,8 @@
-import uvicorn , logging
+import uvicorn, logging, pathlib
+from dotenv import load_dotenv
+
+# Load environment variables relative to this entrypoint script
+load_dotenv(dotenv_path=pathlib.Path(__file__).resolve().parent / ".env")
 
 from server import build_sse_app, mcp
 import tools

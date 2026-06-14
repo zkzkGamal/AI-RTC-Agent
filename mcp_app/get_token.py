@@ -2,22 +2,32 @@
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.oauth2.credentials import Credentials as GoogleCredentials
 
-
-import logging , os
+import logging
+import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+MCP_DIR = Path(__file__).resolve().parent
+load_dotenv(dotenv_path=MCP_DIR / ".env")
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-token_path = os.getenv("GMAIL_TOKEN_FILE", "token.json")
+# Resolve token path relative to the mcp_app folder if it is relative
+token_path_env = os.getenv("GMAIL_TOKEN_FILE", "token.json")
+token_path = Path(token_path_env)
+if not token_path.is_absolute():
+    token_path = MCP_DIR / token_path
+
+# Resolve credentials path relative to the mcp_app folder
+credentials_path = MCP_DIR / "credentials.json"
 
 def validate_token():
     """Make a test API call to validate the token."""
     try:
-        if not os.path.exists(token_path):
+        if not token_path.exists():
             return False
-        creds = GoogleCredentials.from_authorized_user_file(token_path)
+        creds = GoogleCredentials.from_authorized_user_file(str(token_path))
         # auto-refresh if expired
         if creds.expired and creds.refresh_token:
             from google.auth.transport.requests import Request
@@ -36,11 +46,15 @@ def gen_token():
         logger.info("Existing token is valid. No need to generate a new one.")
         return
     
+    if not credentials_path.exists():
+        logger.warning(f"Google credentials file '{credentials_path}' is missing. Skipping token generation...")
+        return
+    
     flow = InstalledAppFlow.from_client_secrets_file(
-        "credentials.json",
+        str(credentials_path),
         scopes=["https://www.googleapis.com/auth/gmail.modify"],
     )
     cerd = flow.run_local_server(port=0)
-    with open("token.json", "w") as token:
+    with open(token_path, "w") as token:
         token.write(cerd.to_json())
-    logger.info("Token generated successfully. Save the following content as token.json:")
+    logger.info("Token generated successfully.")

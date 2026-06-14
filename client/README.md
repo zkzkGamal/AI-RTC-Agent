@@ -69,7 +69,7 @@ Starts the Vite dev server locally:
 ```bash
 npm run dev
 ```
-By default, the client launches at `http://localhost:5173` (or `http://localhost:3000` depending on the environment config).
+By default, the client launches at `http://localhost:3001` (per custom configuration in `vite.config.js`).
 
 > [!NOTE]
 > Make sure the Python signaling backend is running on `http://localhost:8080` before clicking **Start Connection**.

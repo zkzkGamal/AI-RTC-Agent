@@ -1,16 +1,6 @@
 # Root Python requirements for the full AI-RTC-Agent workspace.
-# Installs the shared backend/server and MCP dependencies, plus agent packages.
+# Installs dependencies for all three Python microservices.
 
 -r server/requirements.txt
--r mcp/requirements.txt
-
-# Agent dependencies
-django-environ>=0.10.0
-requests>=2.31.0
-typing-extensions>=4.8.0
-langchain-core>=0.3.0
-langchain-openai>=0.2.0
-langchain-google-genai>=2.0.0
-langchain-ollama>=0.2.0
-langchain-classic>=0.3.0
-langgraph>=0.2.0
+-r mcp_app/requirements.txt
+-r agent/requirements.txt
