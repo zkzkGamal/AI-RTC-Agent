@@ -11,9 +11,9 @@ INFO:__main__:revock the google token if you are testing the calendar tool and h
 INFO:get_token:Existing token is valid. No need to generate a new one.
 INFO:__main__:Google token generated successfully. Starting server...
 INFO:service.LoadModelService:Whisper model loaded.
-INFO:     Started server process [314497]
+INFO:     Started server process [33556]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8005 (Press CTRL+C to quit)
 WARNING:core.Middleware:Unauthorized access attempt from 127.0.0.1
-INFO:     127.0.0.1:45768 - "GET / HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:41748 - "GET / HTTP/1.1" 401 Unauthorized

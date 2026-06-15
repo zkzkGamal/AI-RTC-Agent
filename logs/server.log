@@ -1,4 +1,4 @@
-/home/aloha-zkaria/.local/lib/python3.10/site-packages/webrtcvad.py:1: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+/home/zkzk/.local/lib/python3.12/site-packages/webrtcvad.py:1: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
   import pkg_resources
 INFO:__main__:Starting AI-RTC-Agent server on 0.0.0.0:8080
-INFO:aiohttp.access:127.0.0.1 [14/Jun/2026:12:05:09 +0200] "GET / HTTP/1.1" 404 175 "-" "curl/7.81.0"
+INFO:aiohttp.access:127.0.0.1 [15/Jun/2026:18:50:21 +0200] "GET / HTTP/1.1" 404 174 "-" "curl/8.5.0"

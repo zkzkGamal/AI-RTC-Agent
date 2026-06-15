@@ -6,6 +6,11 @@ export default defineConfig({
   server: {
     port: 3001,
     strictPort: true,
-    host: true,
+    host: process.env.VITE_HOST || '127.0.0.1',
+    // Polling avoids ENOSPC when the host has a low inotify watcher limit.
+    watch: {
+      usePolling: true,
+      interval: 300,
+    },
   },
 })
