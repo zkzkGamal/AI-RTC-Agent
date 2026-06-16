@@ -1,3 +1,5 @@
+"""Tests for email_tools."""
+
 import importlib
 
 import pytest

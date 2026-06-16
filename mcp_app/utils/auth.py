@@ -27,19 +27,19 @@ class Credentials:
     MAIL_USERNAME: str | None = None
     MAIL_PASSWORD: str | None = None
     MAIL_ENCRYPTION: bool = True
-    
+
     GOOGLE_API_KEY: str | None = None
     OPENAI_API_KEY: str | None = None
-    
+
     OLLAMA_BASE_URL: str | None = None
-    
+
     GMAIL_TOKEN_FILE: str | None = None
     GMAIL_SENDER: str | None = None
 
     def _resolve_path(self, file_path: str) -> Path:
         path = Path(file_path)
         return path if path.is_absolute() else MCP_DIR / path
-    
+
     def load_gmail_token(self) -> str:
         """Load Gmail token from file specified in .env. Raises AuthError if missing."""
         token_file = self.GMAIL_TOKEN_FILE
@@ -51,7 +51,6 @@ class Credentials:
         try:
             token_path = self._resolve_path(token_file)
             creds = GoogleCredentials.from_authorized_user_file(token_path)
-            # auto-refresh if expired
             if creds.expired and creds.refresh_token:
                 creds.refresh(Request())
                 with open(token_path, "w") as f:
@@ -63,7 +62,7 @@ class Credentials:
                 message=f"Failed to load Gmail token from '{token_path}': {e}",
                 tool_name="gmail_token",
             ) from e
-    
+
     def require(self, *field_names: str) -> None:
         """
         Call this at the top of any tool that needs specific credentials.
@@ -89,12 +88,12 @@ def _load() -> Credentials:
         MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
         MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
         MAIL_ENCRYPTION=os.getenv("MAIL_ENCRYPTION", "True").lower() in ("true", "1", "yes"),
-        
+
         GOOGLE_API_KEY=os.getenv("GOOGLE_API_KEY"),
         OPENAI_API_KEY=os.getenv("OPENAI_API_KEY"),
-        
+
         OLLAMA_BASE_URL=os.getenv("OLLAMA_BASE_URL"),
-        
+
         GMAIL_TOKEN_FILE=os.getenv("GMAIL_TOKEN_FILE"),
         GMAIL_SENDER=os.getenv("GMAIL_SENDER"),
     )

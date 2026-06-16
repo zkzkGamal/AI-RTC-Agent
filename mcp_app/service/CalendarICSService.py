@@ -31,7 +31,7 @@ class calender_ics_service:
             attendees: Optional list of attendee email addresses.
         """
         pass
-    
+
     def load_ics_events(
         self ,
         ics_content: str, 
@@ -69,7 +69,7 @@ class calender_ics_service:
             events = []
             logger.error("Failed to parse ICS content. Error: %s", exc)
             return events
-    
+
     def build_ics_event(
         self,
         title: str,

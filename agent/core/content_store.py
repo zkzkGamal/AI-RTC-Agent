@@ -16,12 +16,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# project_root/content  (agent/core/content_store.py -> parents[2] == project root)
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[2]
 CONTENT_DIR = PROJECT_ROOT / "content"
 CONTENT_DIR.mkdir(parents=True, exist_ok=True)
 
-# Only these document types may be read.
 SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".md", ".markdown", ".txt"}
 
 
@@ -31,7 +29,7 @@ def is_supported(file_path: str) -> bool:
 
 def save_bytes(filename: str, data: bytes) -> pathlib.Path:
     """Persist raw bytes into the content folder, returning the saved path."""
-    safe_name = pathlib.Path(filename).name  # strip any directory components
+    safe_name = pathlib.Path(filename).name
     if not is_supported(safe_name):
         raise ValueError(
             f"Unsupported file type '{pathlib.Path(safe_name).suffix}'. "
@@ -57,16 +55,13 @@ def resolve_path(file_path: str | None) -> pathlib.Path | None:
     raw = str(file_path).strip().strip('"').strip("'")
     candidate = pathlib.Path(raw)
 
-    # 1. Direct hit (absolute or relative to CWD).
     if candidate.is_file():
         return candidate
 
-    # 2. Look inside the content folder by exact name.
     by_name = CONTENT_DIR / candidate.name
     if by_name.is_file():
         return by_name
 
-    # 3. Fuzzy match: stem appears in a content file name (handles "cv" -> "my_cv.pdf").
     stem = candidate.stem.lower()
     matches = [
         p for p in CONTENT_DIR.iterdir()
@@ -109,7 +104,7 @@ def read_document(file_path: str | None) -> str:
         text = _read_pdf(resolved)
     elif suffix == ".docx":
         text = _read_docx(resolved)
-    else:  # .md / .markdown / .txt
+    else:
         text = resolved.read_text(encoding="utf-8", errors="ignore")
 
     text = text.strip()
@@ -127,7 +122,7 @@ def _read_pdf(path: pathlib.Path) -> str:
 
 def _read_docx(path: pathlib.Path) -> str:
     try:
-        import docx  # python-docx
+        import docx
     except ImportError as e:
         raise ImportError(
             "Reading .docx files requires the 'python-docx' package. "
@@ -136,7 +131,6 @@ def _read_docx(path: pathlib.Path) -> str:
 
     document = docx.Document(str(path))
     parts = [p.text for p in document.paragraphs]
-    # Include table cell text (common in CV templates).
     for table in document.tables:
         for row in table.rows:
             for cell in row.cells:

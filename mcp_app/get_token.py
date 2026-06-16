@@ -1,4 +1,5 @@
-# run this once locally to generate token.json
+"""mcp_app.get_token module."""
+
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.oauth2.credentials import Credentials as GoogleCredentials
 
@@ -13,13 +14,11 @@ load_dotenv(dotenv_path=MCP_DIR / ".env")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Resolve token path relative to the mcp_app folder if it is relative
 token_path_env = os.getenv("GMAIL_TOKEN_FILE", "token.json")
 token_path = Path(token_path_env)
 if not token_path.is_absolute():
     token_path = MCP_DIR / token_path
 
-# Resolve credentials path relative to the mcp_app folder
 credentials_path = MCP_DIR / "credentials.json"
 
 def validate_token():
@@ -28,7 +27,6 @@ def validate_token():
         if not token_path.exists():
             return False
         creds = GoogleCredentials.from_authorized_user_file(str(token_path))
-        # auto-refresh if expired
         if creds.expired and creds.refresh_token:
             from google.auth.transport.requests import Request
             creds.refresh(Request())
@@ -45,11 +43,11 @@ def gen_token():
     if validate_token():
         logger.info("Existing token is valid. No need to generate a new one.")
         return
-    
+
     if not credentials_path.exists():
         logger.warning(f"Google credentials file '{credentials_path}' is missing. Skipping token generation...")
         return
-    
+
     flow = InstalledAppFlow.from_client_secrets_file(
         str(credentials_path),
         scopes=["https://www.googleapis.com/auth/gmail.modify"],

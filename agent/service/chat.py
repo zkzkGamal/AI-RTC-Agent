@@ -1,3 +1,5 @@
+"""agent.service.chat module."""
+
 import uuid
 import logging
 from typing import List, Dict, Any, Optional
@@ -24,7 +26,6 @@ logger = logging.getLogger(__name__)
 
 class Chat:
     def __init__(self):
-        # Automatically initialize the database on startup
         try:
             init_db()
             logger.info("SQLite database initialized successfully.")
@@ -40,19 +41,15 @@ class Chat:
             session_id = str(uuid.uuid4())
             logger.info(f"Generated new session ID: {session_id} for user: {user_id}")
 
-        # Ensure session exists in the database
         session = get_session(session_id)
         if not session:
             save_session(session_id, user_id)
             session = {"session_id": session_id, "user_id": user_id, "pending_confirmation": None}
 
-        # 1. Save user message to database first
         save_message(session_id, user_id, "human", message)
 
-        # 2. Load the full message history from the database
         db_messages = get_messages_by_session(session_id)
-        
-        # 3. Convert database messages to LangChain message objects
+
         lc_messages = []
         for msg in db_messages:
             role = msg["role"]
@@ -89,11 +86,8 @@ class Chat:
                 "error": None
             }
 
-            # Run the agent graph
             result = await graph.ainvoke(state)
 
-            # 5. Extract and save NEW messages generated during this graph execution
-            # The new messages are those appended after the windowed history we passed in
             new_messages = result["messages"][len(agent_messages):]
             for msg in new_messages:
                 role = "system"
@@ -120,11 +114,9 @@ class Chat:
                     tool_call_id=tool_call_id
                 )
 
-            # 6. Update pending_confirmation state in the session
             new_pending = result.get("pending_confirmation")
             save_session(session_id, user_id, pending_confirmation=new_pending)
 
-            # The final response is the content of the last AIMessage or a conversational output
             final_response = ""
             for msg in reversed(result["messages"]):
                 if isinstance(msg, AIMessage) and msg.content:
@@ -143,7 +135,6 @@ class Chat:
             logger.error(f"Error during agent invocation: {e}", exc_info=True)
             raise e
         finally:
-            # Reset context variables
             active_user_id.reset(token_user)
             active_session_id.reset(token_session)
 
@@ -156,8 +147,8 @@ class Chat:
         if not data:
             raise ValueError("Uploaded file is empty.")
 
-        saved_path = save_bytes(filename, data)          # validates supported type
-        cv_text = read_document(str(saved_path))         # PDF / Word / Markdown only
+        saved_path = save_bytes(filename, data)
+        cv_text = read_document(str(saved_path))
 
         result = await ingest_cv(
             user_id=user_id,

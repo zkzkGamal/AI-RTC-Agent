@@ -24,7 +24,6 @@ from langgraph.graph.message import add_messages
 
 
 class AgentState(TypedDict):
-    # ── Conversation ─────────────────────────────────────────────────────────
     messages: Annotated[Sequence[BaseMessage], add_messages]
     user_message: Optional[str]
 

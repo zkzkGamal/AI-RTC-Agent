@@ -31,7 +31,6 @@ logger = logging.getLogger(__name__)
 
 def _search_sync(query: str, max_results: int) -> list:
     """Sync DDG search — runs in a thread via asyncio.to_thread."""
-    # Try different backends sequentially to bypass rate limits or broken parsers
     backends = ["html", "lite", "bing"]
     for backend in backends:
         try:
@@ -42,8 +41,7 @@ def _search_sync(query: str, max_results: int) -> list:
                     return results
         except Exception as e:
             logger.warning(f"DuckDuckGo backend '{backend}' failed or returned empty: {e}")
-            
-    # Try default auto backend as a final fallback
+
     try:
         with DDGS() as ddgs:
             return list(ddgs.text(query, max_results=max_results))

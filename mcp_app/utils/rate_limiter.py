@@ -59,7 +59,6 @@ class _Bucket:
                 wait = (1 - self.tokens) / self.calls_per_second
                 raise RateLimitError(tool_name=tool_name, retry_after=int(wait) + 1)
 
-            # Wait for next token
             wait = (1 - self.tokens) / self.calls_per_second
             await asyncio.sleep(wait)
             self._refill()

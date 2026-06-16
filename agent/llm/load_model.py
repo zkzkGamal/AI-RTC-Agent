@@ -25,12 +25,10 @@ class LLMFactory:
         if MODEL_TYPE == "ollama":
             base_url = e("OLLAMA_BASE_URL", default="http://localhost:11434")
             LLMFactory.preload_ollama_model(model_name, base_url)
-            # Disable reasoning/thinking for ChatOllama to optimize response latency, unless explicitly enabled
             reasoning_enabled = e.bool("OLLAMA_REASONING", default=False)
             kwargs.setdefault("reasoning", reasoning_enabled)
         return llm_class(model=model_name, **kwargs)
-    
-    # pyrefly: ignore [invalid-annotation]
+
     def preload_ollama_model(model_name: str, base_url: str):
         logger.info(f"Preloading Ollama model: {model_name} in memory at startup...")
         try:
@@ -39,7 +37,6 @@ class LLMFactory:
                 "model": model_name,
                 "keep_alive": -1
             }
-            # Preload request can take some time if the model is large
             response = requests.post(url, json=payload, timeout=120)
             if response.status_code == 200:
                 logger.info(f"Successfully preloaded Ollama model: {model_name}")
@@ -56,7 +53,7 @@ elif MODEL_TYPE == "openai":
     api_key = e("OPENAI_API_KEY", default=None)
 elif MODEL_TYPE == "google":
     api_key = e("GOOGLE_API_KEY", default=None)
-    
+
 
 llm = LLMFactory.create_llm(
     model_name=e("LLM_MODEL", default="gpt-3.5-turbo"),

@@ -34,7 +34,6 @@ import pathlib
 import sys
 from langgraph.graph import StateGraph, END
 
-# Setup paths for local package resolution
 project_root = pathlib.Path(__file__).parent.parent.resolve()
 sys.path.insert(0, str(project_root.parent))
 sys.path.insert(0, str(project_root))
@@ -46,7 +45,6 @@ from agent.agent.nodes.act import execute as execute_node
 from agent.agent.nodes.conversation import conversation as conversation_node
 
 
-# Define routing conditional paths
 def route_after_router(state: AgentState) -> str:
     route = state.get("route", "CONV")
     if route == "PLAN":
@@ -56,23 +54,18 @@ def route_after_router(state: AgentState) -> str:
     else:
         return "conversation"
 
-# Define execution conditional paths (HIL check)
 def route_after_executor(state: AgentState) -> str:
-    # If a dangerous tool is pending confirmation, halt the graph execution
     if state.get("pending_confirmation"):
         return END
     return "conversation"
 
-# 1. Build the StateGraph
 workflow = StateGraph(AgentState)
 
-# 2. Add all Nodes
 workflow.add_node("router", router_node)
 workflow.add_node("planner", planner_node)
 workflow.add_node("executor", execute_node)
 workflow.add_node("conversation", conversation_node)
 
-# 3. Add Edges & Conditional Routing
 workflow.set_entry_point("router")
 
 workflow.add_conditional_edges(
@@ -98,10 +91,8 @@ workflow.add_conditional_edges(
 
 workflow.add_edge("conversation", END)
 
-# 4. Compile the Graph
 graph = workflow.compile()
 
-# 5. Export Graph Image Visualization
 try:
     image_bytes = graph.get_graph().draw_mermaid_png()
     output_path = project_root / "agent_graph.png"

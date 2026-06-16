@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 mail_service = mail_service()
 
 
-
 @mcp.tool()
 async def reply_to_email(email_id: str, body: str) -> dict:
     """
@@ -42,7 +41,6 @@ async def reply_to_email(email_id: str, body: str) -> dict:
         credentials.require("MAIL_HOST", "MAIL_USERNAME", "MAIL_PASSWORD")
         await rate_limiter.acquire("gmail")
 
-        # Step 1 — fetch original to build proper reply headers
         original = mail_service._get_original(email_id)
         if not original:
             return err(
@@ -50,10 +48,8 @@ async def reply_to_email(email_id: str, body: str) -> dict:
                 code="NOT_FOUND",
             )
 
-        # Step 2 — build reply
         reply = mail_service._build_reply(original, body)
 
-        # Step 3 — send via SMTP
         host    = credentials.MAIL_HOST
         port    = credentials.MAIL_PORT or 587
         use_ssl = credentials.MAIL_ENCRYPTION

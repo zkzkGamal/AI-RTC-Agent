@@ -32,7 +32,7 @@ class mail_service:
             3. Call reply_to_email(email_id, body) to reply to existing emails, which will fetch original email details and construct proper reply headers.
         """
         pass
-    
+
     def _send_sync(
         self , 
         subject: str, 
@@ -72,7 +72,7 @@ class mail_service:
         except Exception as e:
             logger.error(f"Failed to send email: {e}")
             raise ValueError(f"Could not send email to {to_email} due to: {e}")
-        
+
     def _get_original(
         self ,
         email_id: str
@@ -109,7 +109,7 @@ class mail_service:
         except Exception as e:
             logger.error(f"Failed to fetch original email: {e}")
             raise ValueError(f"Could not fetch original email with ID {email_id}")
-        
+
     def _build_reply(
         self ,
         original: dict, 
@@ -119,11 +119,9 @@ class mail_service:
         try:
             reply = MIMEMultipart()
 
-            # Reply subject — add Re: if not already there
             subject = original["subject"]
             reply["Subject"] = subject if subject.startswith("Re:") else f"Re: {subject}"
 
-            # Headers
             reply["From"]       = credentials.MAIL_USERNAME
             reply["To"]         = original["from"]
             reply["In-Reply-To"] = original.get("message_id", "")
@@ -134,6 +132,5 @@ class mail_service:
         except Exception as e:
             logger.error(f"Failed to build reply: {e}")
             raise ValueError("Could not build reply email due to invalid original email data.")
-
 
 

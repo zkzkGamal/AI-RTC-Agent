@@ -1,3 +1,5 @@
+"""agent.tools.mcp_tools.load_calendar_events module."""
+
 from langchain_core.tools import tool
 from core.mcp_client import call_mcp_tool
 

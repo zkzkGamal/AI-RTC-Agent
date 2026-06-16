@@ -30,7 +30,6 @@ load_dotenv(dotenv_path=Path(__file__).resolve().parents[2] / ".env")
 GMAIL_API = os.getenv("GMAIL_API_URL", "https://gmail.googleapis.com/gmail/v1/users/me")
 
 
-
 @mcp.tool()
 async def list_inbox(limit: int = 10) -> dict:
     """
@@ -44,7 +43,6 @@ async def list_inbox(limit: int = 10) -> dict:
         limit = min(limit, 50)
 
         async with httpx.AsyncClient() as client:
-            # Step 1 — get list of message IDs
             res = await client.get(
                 f"{GMAIL_API}/messages",
                 headers=_headers(),
@@ -53,7 +51,6 @@ async def list_inbox(limit: int = 10) -> dict:
             res.raise_for_status()
             messages = res.json().get("messages", [])
 
-            # Step 2 — fetch metadata for each
             emails = []
             for msg in messages:
                 detail = await client.get(

@@ -14,7 +14,6 @@ from core.IntentClassifier import AGENT_MODE, get_intent
 logger      = logging.getLogger(__name__)
 load_prompts = LoadPrompts()
 
-# Flow intent router system messages (CONV, DIRECT, PLAN)
 _SYSTEM_MESSAGES = load_prompts.load_prompt("router/intent_router.yml")
 _TEMPLATE = ChatPromptTemplate.from_messages([
     *_SYSTEM_MESSAGES,
@@ -22,7 +21,6 @@ _TEMPLATE = ChatPromptTemplate.from_messages([
 ])
 _router_chain = _TEMPLATE | llm
 
-# Business intent router system messages (CHAT, RECRUITMENT, EMAIL, etc.)
 _BUSINESS_SYSTEM_MESSAGES = load_prompts.load_prompt(f"router/{AGENT_MODE}.yaml")
 _business_template = ChatPromptTemplate.from_messages([
     *_BUSINESS_SYSTEM_MESSAGES,
@@ -38,7 +36,6 @@ def router(state: dict) -> dict:
     Writes state['route'] for tool execution and planners.
     Writes state['intent'] for prompt synthesis and behaviors.
     """
-    # If there is a pending confirmation, bypass routing and go DIRECT to executor
     if state.get("pending_confirmation"):
         logger.info("[router] Pending confirmation detected. Bypassing router classification and going DIRECT.")
         intent = state.get("intent") or "CHAT"
@@ -53,11 +50,9 @@ def router(state: dict) -> dict:
         )
         logger.warning("[router] user_message empty — falling back to raw last message")
 
-    # 1. Classify execution flow route (CONV, DIRECT, PLAN)
     response = _router_chain.invoke({"user_message": user_message})
     route    = response.content.strip().upper()
 
-    # Normalize output
     if "PLAN" in route:
         route = "PLAN"
     elif "DIRECT" in route:
@@ -65,8 +60,6 @@ def router(state: dict) -> dict:
     else:
         route = "CONV"
 
-    # 2. Classify domain business intent (CHAT, RECRUITMENT, PAYROLL, etc. / WEB_SEARCH, EMAIL, etc.)
-    # Optimization: Conversational flow routes default to CHAT intent without an extra LLM call
     if route == "CONV":
         intent = "CHAT"
     else:

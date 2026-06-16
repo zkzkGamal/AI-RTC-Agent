@@ -1,3 +1,5 @@
+"""Tests for api_key_middleware."""
+
 import pytest
 from starlette.requests import Request
 from starlette.responses import Response

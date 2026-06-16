@@ -83,7 +83,7 @@ class google_calendar_service:
             "html_link": data.get("htmlLink"),
             "status": data.get("status"),
         }
-        
+
     async def load_google_calendar_events(
         self, 
         scope: str = "today"

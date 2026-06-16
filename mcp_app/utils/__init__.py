@@ -1,3 +1,5 @@
+"""Shared utilities for the MCP server."""
+
 from .exceptions      import ToolError, AuthError, RateLimitError, ExternalAPIError, ValidationError
 from .auth            import credentials
 from .http_client     import get, post, patch, delete

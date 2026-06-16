@@ -1,3 +1,5 @@
+"""mcp_app.utils.imap_helper module."""
+
 import imaplib
 import email
 from email.header import decode_header
@@ -57,7 +59,7 @@ def list_inbox_imap(limit: int = 10) -> dict:
                         subject = _decode_str(msg["Subject"])
                         from_ = _decode_str(msg["From"])
                         date = msg["Date"] or ""
-                        
+
                         snippet = ""
                         if msg.is_multipart():
                             for subpart in msg.walk():
@@ -118,7 +120,7 @@ def read_email_imap(email_id: str) -> dict:
                 from_ = _decode_str(msg["From"])
                 to = _decode_str(msg["To"])
                 date = msg["Date"] or ""
-                
+
                 if msg.is_multipart():
                     for subpart in msg.walk():
                         content_type = subpart.get_content_type()
@@ -137,7 +139,7 @@ def read_email_imap(email_id: str) -> dict:
                     payload = msg.get_payload(decode=True)
                     if payload:
                         body = payload.decode(errors="replace")
-                
+
                 snippet = body[:150] if body else ""
 
         mail.close()

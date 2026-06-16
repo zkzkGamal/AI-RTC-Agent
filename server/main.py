@@ -28,8 +28,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# ─── Session Model ──────────────────────────────────────────────────
-
 @dataclass
 class Session:
     session_id: str
@@ -38,11 +36,8 @@ class Session:
     tasks: list = field(default_factory=list)
 
 
-# In-memory session store { session_id → Session }
 _sessions: Dict[str, Session] = {}
 
-
-# ─── Audio Receive Loop ────────────────────────────────────────────
 
 async def _consume_audio_track(track: MediaStreamTrack, session: Session) -> None:
     """
@@ -59,28 +54,19 @@ async def _consume_audio_track(track: MediaStreamTrack, session: Session) -> Non
             except Exception:
                 break
 
-            # av.AudioFrame → numpy array
             audio = frame.to_ndarray()
 
-            # Extract mono channel (Left channel) properly handling both planar and interleaved formats
             channels = len(frame.layout.channels)
             if "p" in frame.format.name:
-                # Planar format: shape is (channels, samples)
                 mono = audio[0]
             else:
-                # Interleaved format: shape is (1, samples * channels)
-                # Slice the first channel from the interleaved buffer
                 mono = audio[0][::channels]
 
-            # Convert to int16 PCM based on the actual dtype
             if mono.dtype == np.float32 or mono.dtype == np.float64:
-                # Float audio: range [-1.0, 1.0] → int16 [-32768, 32767]
                 pcm_int16 = (np.clip(mono, -1.0, 1.0) * 32767).astype(np.int16)
             else:
-                # Already integer (int16 from Opus/s16 format) — use directly
                 pcm_int16 = mono.astype(np.int16)
 
-            # Convert to raw bytes using numpy (fast, correct)
             pcm_bytes = pcm_int16.tobytes()
 
             sample_rate = frame.sample_rate or 48000
@@ -94,8 +80,6 @@ async def _consume_audio_track(track: MediaStreamTrack, session: Session) -> Non
             await session.audio_session.close()
 
 
-# ─── Session Cleanup ───────────────────────────────────────────────
-
 async def _cleanup_session(session_id: str) -> None:
     session = _sessions.pop(session_id, None)
     if session is None:
@@ -106,8 +90,6 @@ async def _cleanup_session(session_id: str) -> None:
     if session.pc:
         await session.pc.close()
 
-
-# ─── Routes ────────────────────────────────────────────────────────
 
 async def handle_create_session(request: web.Request) -> web.Response:
     """GET /session → { session_id }"""
@@ -137,7 +119,6 @@ async def handle_offer(request: web.Request) -> web.Response:
         logger.error(f"[{session_id}] Bad offer: {exc}")
         return web.json_response({"error": "Invalid offer"}, status=400)
 
-    # Create AudioSession and PeerConnection
     session.audio_session = AudioSession(session_id=session_id)
     pc = RTCPeerConnection()
     session.pc = pc
@@ -162,7 +143,6 @@ async def handle_offer(request: web.Request) -> web.Response:
         if channel.label == "transcript":
             session.audio_session.set_datachannel(channel)
 
-    # SDP negotiation
     await pc.setRemoteDescription(offer)
     answer = await pc.createAnswer()
     await pc.setLocalDescription(answer)
@@ -174,15 +154,12 @@ async def handle_offer(request: web.Request) -> web.Response:
     })
 
 
-# ─── App Factory ───────────────────────────────────────────────────
-
 def create_app() -> web.Application:
     app = web.Application()
 
     app.router.add_get("/session", handle_create_session)
     app.router.add_post("/session/{session_id}/offer", handle_offer)
 
-    # CORS — allow all origins (restrict in production)
     cors = aiohttp_cors.setup(app, defaults={
         "*": aiohttp_cors.ResourceOptions(
             allow_credentials=True,
@@ -196,8 +173,6 @@ def create_app() -> web.Application:
 
     return app
 
-
-# ─── Entry Point ───────────────────────────────────────────────────
 
 if __name__ == "__main__":
     app = create_app()

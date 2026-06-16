@@ -1,3 +1,5 @@
+"""agent.api.routes module."""
+
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List

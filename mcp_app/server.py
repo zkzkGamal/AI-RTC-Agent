@@ -1,3 +1,5 @@
+"""mcp_app.server module."""
+
 from mcp.server.fastmcp import FastMCP
 from starlette.applications import Starlette
 

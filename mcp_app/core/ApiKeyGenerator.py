@@ -1,3 +1,5 @@
+"""mcp_app.core.ApiKeyGenerator module."""
+
 import datetime
 import math
 import time , logging

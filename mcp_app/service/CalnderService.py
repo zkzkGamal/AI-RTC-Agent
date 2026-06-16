@@ -31,14 +31,14 @@ class calendar_service:
             duration_minutes: The event duration in minutes, must be greater than 0.
         """
         pass
-    
+
     def _to_iso(self , value: Any) -> str:
         if isinstance(value, datetime):
             return value.isoformat()
         if isinstance(value, date):
             return datetime.combine(value, time.min).isoformat()
         return str(value)
-    
+
     def _time_bounds(self , scope: str) -> tuple[str | None, str | None]:
         if scope not in {"today", "all"}:
             raise ValidationError(
@@ -53,7 +53,7 @@ class calendar_service:
         start_of_day = datetime.combine(today, time.min, tzinfo=timezone.utc)
         end_of_day = start_of_day + timedelta(days=1)
         return start_of_day.isoformat(), end_of_day.isoformat()
-    
+
     def _event_in_scope(self , start_value: Any, scope: str) -> bool:
         if scope == "all":
             return True
@@ -64,7 +64,7 @@ class calendar_service:
         if isinstance(start_value, date):
             return start_value == today
         return False
-    
+
     def _parse_event_times(self , date: str, time: str, duration_minutes: int) -> tuple[datetime, datetime]:
         if duration_minutes <= 0:
             raise ValidationError(

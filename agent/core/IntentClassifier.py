@@ -1,4 +1,3 @@
-# core/IntentClassifier.py
 """
 Intent Classifier
 -----------------
@@ -63,7 +62,6 @@ def get_intent(response) -> str:
         logger.info(f"[intent] classified as: {raw!r}")
         return raw
 
-    # Try partial match — handles cases where LLM adds punctuation or a word
     for route in _VALID_ROUTES:
         if route in raw:
             logger.warning(

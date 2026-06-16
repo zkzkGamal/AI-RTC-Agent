@@ -1,14 +1,142 @@
 INFO:agent.service.chat:SQLite database initialized successfully.
-INFO:     Started server process [55266]
+INFO:     Started server process [60116]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
 Successfully saved agent graph visualization to: /home/zkzk/ai/AI-RTC-Agent/agent/agent_graph.png
-INFO:     127.0.0.1:42650 - "GET / HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:42658 - "GET /api/sessions/candidate_user_1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:42658 - "GET /api/sessions/candidate_user_1 HTTP/1.1" 200 OK
-INFO:     ('127.0.0.1', 42660) - "WebSocket /socket.io/?EIO=4&transport=websocket" [accepted]
+INFO:     127.0.0.1:44964 - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:44978 - "GET /api/sessions/candidate_user_1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44978 - "GET /api/sessions/candidate_user_1 HTTP/1.1" 200 OK
+INFO:     ('127.0.0.1', 44984) - "WebSocket /socket.io/?EIO=4&transport=websocket" [accepted]
 INFO:     connection open
-INFO:agent.sockets.sio:Socket connected: DV_vSbPiS_u925szAAAB
-INFO:agent.sockets.sio:Socket DV_vSbPiS_u925szAAAB joined session room: aaeb78d6-e2fe-49e7-9301-a275dace7105
-INFO:agent.sockets.sio:Socket DV_vSbPiS_u925szAAAB joined user room: candidate_user_1
+INFO:agent.sockets.sio:Socket connected: O_wYm6dbItKshv8iAAAB
+INFO:agent.sockets.sio:Socket O_wYm6dbItKshv8iAAAB joined session room: aaeb78d6-e2fe-49e7-9301-a275dace7105
+INFO:agent.sockets.sio:Socket O_wYm6dbItKshv8iAAAB joined user room: candidate_user_1
+INFO:     127.0.0.1:45062 - "OPTIONS /api/chat HTTP/1.1" 200 OK
+INFO:agent.service.chat:Generated new session ID: db740495-4b3a-41f9-a75c-4729c50833a1 for user: candidate_user_1
+/home/zkzk/ai/AI-RTC-Agent/agent/service/cv_memory.py:183: LangChainDeprecationWarning: Please see the migration guide at: https://python.langchain.com/docs/versions/migrating_memory/
+  memory = ConversationBufferWindowMemory(k=k, return_messages=True)
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.router:[router] Classified intent as: CONV | Business intent: CHAT
+INFO:agent.agent.nodes.conversation:[conversation] Processing direct conversation...
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.conversation:[conversation] Final output generated: Hello! How can I help you today?...
+INFO:     127.0.0.1:45078 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45078 - "GET /api/sessions/candidate_user_1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45062 - "GET /api/sessions/db740495-4b3a-41f9-a75c-4729c50833a1/messages HTTP/1.1" 200 OK
+INFO:     ('127.0.0.1', 45088) - "WebSocket /socket.io/?EIO=4&transport=websocket" [accepted]
+INFO:     connection open
+INFO:agent.sockets.sio:Socket connected: 1bOli8KsUgNPr_EMAAAD
+INFO:agent.sockets.sio:Socket 1bOli8KsUgNPr_EMAAAD joined session room: db740495-4b3a-41f9-a75c-4729c50833a1
+INFO:agent.sockets.sio:Socket 1bOli8KsUgNPr_EMAAAD joined user room: candidate_user_1
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.router:[router] Classified intent as: CONV | Business intent: CHAT
+INFO:agent.agent.nodes.conversation:[conversation] Processing direct conversation...
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.conversation:[conversation] Final output generated: Of course! What's on your mind? Whether you need help with a project, want to discuss something personal, or just need s...
+INFO:     127.0.0.1:45100 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45100 - "GET /api/sessions/candidate_user_1 HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.router:[router] Classified intent as: CONV | Business intent: CHAT
+INFO:agent.agent.nodes.conversation:[conversation] Processing direct conversation...
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.conversation:[conversation] Final output generated: That is one of the most profound questions humanity has ever asked. Since you're asking about the "meaning of life," the...
+INFO:     127.0.0.1:48688 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48688 - "GET /api/sessions/candidate_user_1 HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.router:[router] Classified intent as: CONV | Business intent: CHAT
+INFO:agent.agent.nodes.conversation:[conversation] Processing direct conversation...
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.conversation:[conversation] Final output generated: I cannot engage in conversations involving violence, threats, or harmful content. I can, however, help you with other to...
+INFO:     127.0.0.1:55126 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55126 - "GET /api/sessions/candidate_user_1 HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.router:[router] Classified intent as: CONV | Business intent: CHAT
+INFO:agent.agent.nodes.conversation:[conversation] Processing direct conversation...
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.conversation:[conversation] Final output generated: I've got you covered! What's on your mind? Whether it's something you need help with, a question you have, or just want ...
+INFO:     127.0.0.1:54696 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54696 - "GET /api/sessions/candidate_user_1 HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:core.IntentClassifier:[intent] classified as: 'CODE_EXECUTE'
+INFO:agent.agent.nodes.router:[router] Classified intent as: DIRECT | Business intent: CODE_EXECUTE
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.act:[execute] Reasoning complete. No tool calls requested.
+INFO:agent.agent.nodes.conversation:[conversation] Synthesizing tool outputs for intent: CODE_EXECUTE
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.conversation:[conversation] Final output generated: I appreciate the offer, but I want to clarify how we can work together:
+
+*   **Git Commands:** You are running `git add ...
+INFO:     127.0.0.1:39822 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39822 - "GET /api/sessions/candidate_user_1 HTTP/1.1" 200 OK
+INFO:agent.sockets.sio:Socket disconnected: 1bOli8KsUgNPr_EMAAAD
+INFO:     connection closed
+INFO:agent.sockets.sio:Socket disconnected: O_wYm6dbItKshv8iAAAB
+INFO:     connection closed
+INFO:agent.service.chat:Generated new session ID: 7194c262-abe4-4938-8a35-eed2a25e3a5d for user: candidate_user_1
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.router:[router] Classified intent as: CONV | Business intent: CHAT
+INFO:agent.agent.nodes.conversation:[conversation] Processing direct conversation...
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.conversation:[conversation] Final output generated: Hello! How can I help you today?...
+INFO:     127.0.0.1:39482 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39482 - "GET /api/sessions/candidate_user_1 HTTP/1.1" 200 OK
+INFO:     ('127.0.0.1', 39498) - "WebSocket /socket.io/?EIO=4&transport=websocket" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:39482 - "GET /api/sessions/7194c262-abe4-4938-8a35-eed2a25e3a5d/messages HTTP/1.1" 200 OK
+INFO:agent.sockets.sio:Socket connected: oeB1Z-UAQrgPEWrkAAAF
+INFO:agent.sockets.sio:Socket oeB1Z-UAQrgPEWrkAAAF joined session room: 7194c262-abe4-4938-8a35-eed2a25e3a5d
+INFO:agent.sockets.sio:Socket oeB1Z-UAQrgPEWrkAAAF joined user room: candidate_user_1
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.router:[router] Classified intent as: CONV | Business intent: CHAT
+INFO:agent.agent.nodes.conversation:[conversation] Processing direct conversation...
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.conversation:[conversation] Final output generated: AI-powered web search has evolved significantly from traditional search engines by integrating large language models (LL...
+INFO:     127.0.0.1:39484 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39484 - "GET /api/sessions/candidate_user_1 HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:core.IntentClassifier:[intent] classified as: 'WEB_SEARCH'
+INFO:agent.agent.nodes.router:[router] Classified intent as: DIRECT | Business intent: WEB_SEARCH
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.act:[execute] LLM requested tool calls: ['duckduckgo_search']
+INFO:core.mcp_client:Invoking MCP tool 'duckduckgo_search' with args {'query': 'zkzkAgent', 'max_results': 2}
+INFO:httpx:HTTP Request: GET http://localhost:8005/sse "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:8005/messages/?session_id=0f16964ce4504e98bbe0a5c24bb84877 "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: POST http://localhost:8005/messages/?session_id=0f16964ce4504e98bbe0a5c24bb84877 "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: POST http://localhost:8005/messages/?session_id=0f16964ce4504e98bbe0a5c24bb84877 "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: POST http://localhost:8005/messages/?session_id=0f16964ce4504e98bbe0a5c24bb84877 "HTTP/1.1 202 Accepted"
+INFO:core.mcp_client:MCP tool 'duckduckgo_search' returned: {
+  "status": "ok",
+  "timestamp": "2026-06-16T18:54:36.770015+00:00",
+  "data": {
+    "query": "zkzkAgent",
+    "result...
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.act:[execute] Reasoning complete. No tool calls requested.
+INFO:agent.agent.nodes.conversation:[conversation] Synthesizing tool outputs for intent: WEB_SEARCH
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.conversation:[conversation] Final output generated: That sounds like a fascinating project! **zkzkAgent** seems designed specifically for users who prioritize privacy and w...
+INFO:     127.0.0.1:55450 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55450 - "GET /api/sessions/candidate_user_1 HTTP/1.1" 200 OK
+INFO:core.content_store:[content_store] Saved 5371 bytes to /home/zkzk/ai/AI-RTC-Agent/content/Zakaria-Gamal.md
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.service.cv_memory:[cv_memory] Stored CV memory for user=candidate_user_1 (30 keywords, file=Zakaria-Gamal.md)
+INFO:agent.service.chat:Ingested CV 'Zakaria-Gamal.md' for user 'candidate_user_1'.
+INFO:     127.0.0.1:43678 - "POST /api/cv/upload HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:core.IntentClassifier:[intent] classified as: 'CHAT'
+INFO:agent.agent.nodes.router:[router] Classified intent as: DIRECT | Business intent: CHAT
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.act:[execute] Reasoning complete. No tool calls requested.
+INFO:agent.agent.nodes.conversation:[conversation] Synthesizing tool outputs for intent: CHAT
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:agent.agent.nodes.conversation:[conversation] Final output generated: It looks like you've shared a detailed analysis of Zakaria Gamal Ahmed's CV rather than asking me to act as the **AI-RTC...
+INFO:     127.0.0.1:43678 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43678 - "GET /api/sessions/candidate_user_1 HTTP/1.1" 200 OK
+INFO:agent.sockets.sio:Socket disconnected: oeB1Z-UAQrgPEWrkAAAF
+INFO:     connection closed
+INFO:     127.0.0.1:34314 - "GET /api/sessions/candidate_user_1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34314 - "GET /api/sessions/candidate_user_1 HTTP/1.1" 200 OK

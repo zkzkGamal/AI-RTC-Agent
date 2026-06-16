@@ -46,15 +46,12 @@ async def emit_tool_event(tool_name: str, status: str, payload_data: dict = None
                 "session_id": session_id,
                 **(payload_data or {})
             }
-            # Emit to session room
             if session_id:
                 await sio.emit(tool_name, event_payload, room=session_id)
                 await sio.emit(f"tool_{status}", event_payload, room=session_id)
-            # Emit to user room
             if user_id:
                 await sio.emit(tool_name, event_payload, room=user_id)
                 await sio.emit(f"tool_{status}", event_payload, room=user_id)
-            # Broadcast
             await sio.emit(tool_name, event_payload)
             await sio.emit(f"tool_{status}", event_payload)
         except Exception as e:
@@ -69,7 +66,6 @@ AGENT_MODE = _e("AGENT_MODE", default="general")
 
 _PARTIAL_PROMPT = load_prompts.load_partial_prompt(f"act/{AGENT_MODE}.yaml")
 
-# Register tools based on AGENT_MODE
 _active_tools = [
     duckduckgo_search,
     list_inbox,
@@ -84,13 +80,10 @@ _active_tools = [
 if AGENT_MODE == "hr":
     _active_tools.append(readcv)
 
-# Map tools by name for execution lookup
 _TOOL_MAP = {t.name: t for t in _active_tools}
 
-# Bind tools to the LLM
 llm_with_tools = llm.bind_tools(_active_tools)
 
-# Define dangerous tools that require Human-In-The-Loop approval
 DANGEROUS_TOOLS = {"send_email", "reply_to_email", "create_calendar_event"}
 
 
@@ -106,7 +99,6 @@ async def execute(state: dict) -> dict:
     intent = state.get("intent", "CHAT")
     plan = state.get("plan", "")
 
-    # Get details for formatting act system instructions
     user_text = messages[-1].content if messages else ""
     history = messages[:-1]
     conversation_history = "\n".join(
@@ -117,7 +109,6 @@ async def execute(state: dict) -> dict:
     last_route = state.get("last_route", "")
     last_tool_result = state.get("last_tool_result", "")
 
-    # Format dedicated tool execution system instructions
     plan_section = f"Plan Drafted by Planner:\n{plan}" if plan else ""
     history_section = (
         f"─────────────────────────────────────\n"
@@ -150,7 +141,6 @@ INSTRUCTIONS
 {history_section}{plan_section}
 """
 
-    # 1. Handle pending confirmation response from user if resuming
     if pending:
         import json
         user_msg = messages[-1].content.strip().lower()
@@ -160,8 +150,6 @@ INSTRUCTIONS
 
         logger.info(f"[execute] Resuming pending tool '{tool_name}'. User response: '{user_msg}'")
 
-        # Tokenize into whole words so short keywords like "y"/"n" only match a
-        # standalone token, never a substring (e.g. the "y" inside "thank you").
         import re
         tokens = set(re.findall(r"[a-z']+", user_msg))
 
@@ -194,19 +182,17 @@ Return ONLY the final updated JSON dictionary. Do not include any explanation, b
             try:
                 llm_response = await llm.ainvoke([SystemMessage(content=system_prompt)])
                 content = llm_response.content.strip()
-                
-                # Robust extraction of JSON substring
+
                 import re
                 json_match = re.search(r'\{.*\}', content, re.DOTALL)
                 if json_match:
                     json_str = json_match.group(0)
                 else:
                     json_str = content
-                
+
                 updated_args = json.loads(json_str)
                 logger.info(f"[execute] Updated tool arguments: {updated_args}")
-                
-                # Execute tool with updated arguments
+
                 tool_instance = _TOOL_MAP[tool_name]
                 await emit_tool_event(tool_name, "start", {"arguments": updated_args})
                 result = await tool_instance.ainvoke(updated_args)
@@ -214,7 +200,7 @@ Return ONLY the final updated JSON dictionary. Do not include any explanation, b
             except Exception as e:
                 logger.error(f"[execute] Failed to modify tool arguments: {e}. Raw response: {content}")
                 result = f"Error: Failed to apply modifications: {e}"
-        
+
         elif is_approved:
             try:
                 tool_instance = _TOOL_MAP[tool_name]
@@ -256,10 +242,6 @@ Return ONLY the final updated JSON dictionary. Do not include any explanation, b
 
     act_context = [SystemMessage(content=system_instruction)]
 
-    # Re-inject the candidate's CV knowledge (carried in state["messages"]) as a
-    # first-class system message. If the request can be answered from the CV, the
-    # LLM should answer directly instead of reaching for an unrelated tool.
-    # Imported lazily to avoid a circular import via the agent.service package.
     from agent.service.cv_memory import cv_message_from_history
     cv_message = cv_message_from_history(messages)
     if cv_message is not None:
@@ -298,17 +280,17 @@ Return ONLY the final updated JSON dictionary. Do not include any explanation, b
                 "id": dangerous_call["id"],
             }
             logger.warning(f"[execute] HIL Triggered! Pausing for dangerous tool: {dangerous_call['name']}")
-            
+
             args_str = ""
             for k, v in dangerous_call["args"].items():
                 if isinstance(v, list):
                     v = ", ".join(map(str, v))
                 args_str += f"{k}:{v}\n"
-            
+
             pretty_message = f"the response {dangerous_call['name']} the agrs is\n{args_str.strip()}"
-            
+
             messages.append(AIMessage(content=pretty_message))
-            
+
             return {
                 "messages": messages,
                 "pending_confirmation": pending,

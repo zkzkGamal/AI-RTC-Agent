@@ -1,3 +1,5 @@
+"""agent.tools.mcp_tools.readcv module."""
+
 from langchain_core.tools import tool
 from core.content_store import read_document, resolve_path
 
@@ -26,7 +28,7 @@ async def readcv(file_path: str = "") -> str:
         )
     except ValueError as e:
         return f"Could not read CV: {e}"
-    except Exception as e:  # pragma: no cover - defensive
+    except Exception as e:
         return f"Error reading CV: {e}"
 
     resolved = resolve_path(file_path)

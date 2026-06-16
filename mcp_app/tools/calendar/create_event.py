@@ -27,7 +27,6 @@ calendar_service = calendar_service()
 google_calendar_service = google_calendar_service()
 
 
-
 @mcp.tool()
 async def create_calendar_event(
     title: str,

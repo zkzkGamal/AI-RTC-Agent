@@ -22,11 +22,9 @@ _e.read_env(str(_base / ".env"))
 
 AGENT_MODE = _e("AGENT_MODE", default="general")
 
-# Load prompt templates
 _CONV_PARTIAL = load_prompts.load_partial_prompt(f"conversations/{AGENT_MODE}.yaml")
 _ACT_PARTIAL  = load_prompts.load_partial_prompt(f"act/{AGENT_MODE}.yaml")
 
-# Define Chat Chains
 _CONV_TEMPLATE = ChatPromptTemplate.from_messages([
     *_CONV_PARTIAL.format_prompt(
         user_message         = "{user_message}",
@@ -58,7 +56,6 @@ def conversation(state: dict) -> dict:
     plan = state.get("plan", "")
     tool_results = state.get("tool_results", "")
 
-    # Static metadata from prompts config
     name = load_prompts._static.get("name", "")
     home = load_prompts._static.get("home", "")
 
@@ -73,10 +70,6 @@ def conversation(state: dict) -> dict:
     last_route = state.get("last_route", "")
     last_tool_result = state.get("last_tool_result", "")
 
-    # The candidate's CV knowledge is carried in state["messages"]; the synthesis
-    # chains rebuild their own context, so re-inject it here as a leading system
-    # message. Without this the final answer cannot use the uploaded CV.
-    # Imported lazily to avoid a circular import via the agent.service package.
     from agent.service.cv_memory import cv_message_from_history
     cv_message = cv_message_from_history(messages)
 
@@ -92,7 +85,6 @@ def conversation(state: dict) -> dict:
         )
     else:
         logger.info(f"[conversation] Synthesizing tool outputs for intent: {intent}")
-        # If there is a plan, prepend it to the tool results for the actor synthesis
         combined_results = f"Plan:\n{plan}\n\nExecution Results:\n{tool_results}" if plan else tool_results
         prompt_messages = _ACT_TEMPLATE.format_messages(
             name=name,
@@ -108,7 +100,6 @@ def conversation(state: dict) -> dict:
 
     final_message = response.content.strip()
 
-    # Clean up "Resolved Message:" prefix and surrounding quotes
     import re
     cleaned = final_message
     cleaned = re.sub(r'^(?:\*\*|)?Resolved\s+Message(?:\*\*|)?:\s*', '', cleaned, flags=re.IGNORECASE)
@@ -119,7 +110,6 @@ def conversation(state: dict) -> dict:
 
     logger.info(f"[conversation] Final output generated: {final_message[:120]}...")
 
-    # Return state updates
     return {
         "messages": [AIMessage(content=final_message)],
         "user_message": user_text,

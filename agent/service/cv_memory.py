@@ -23,11 +23,8 @@ from agent.service.db import save_cv_memory, get_cv_memory
 
 logger = logging.getLogger(__name__)
 
-# Always feed the agent only the last N messages of the running conversation.
 HISTORY_WINDOW = 3
 
-# Marker that identifies the CV memory SystemMessage inside a message list, so
-# downstream nodes can pull the candidate knowledge back out of state["messages"].
 CV_MEMORY_PREFIX = "CANDIDATE CV ON FILE"
 
 _EXTRACTION_PROMPT = """You are an expert technical recruiter and CV parser.
@@ -57,7 +54,6 @@ CV TEXT:
 
 async def extract_cv_knowledge(cv_text: str) -> Dict[str, Any]:
     """Use the LLM to extract structured knowledge + exact keywords from CV text."""
-    # Guard against very large CVs blowing the context window.
     snippet = cv_text[:12000]
     prompt = _EXTRACTION_PROMPT.format(cv_text=snippet)
 
@@ -69,7 +65,6 @@ async def extract_cv_knowledge(cv_text: str) -> Dict[str, Any]:
         logger.error(f"[cv_memory] LLM extraction failed: {e}")
         knowledge = {}
 
-    # Normalise shape so downstream code can rely on it.
     knowledge.setdefault("name", "")
     knowledge.setdefault("title", "")
     knowledge.setdefault("summary", "")

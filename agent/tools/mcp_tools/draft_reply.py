@@ -1,3 +1,5 @@
+"""agent.tools.mcp_tools.draft_reply module."""
+
 from langchain_core.tools import tool
 from core.mcp_client import call_mcp_tool
 

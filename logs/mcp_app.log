@@ -11,9 +11,29 @@ INFO:__main__:revock the google token if you are testing the calendar tool and h
 INFO:get_token:Existing token is valid. No need to generate a new one.
 INFO:__main__:Google token generated successfully. Starting server...
 INFO:service.LoadModelService:Whisper model loaded.
-INFO:     Started server process [55265]
+INFO:     Started server process [60115]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8005 (Press CTRL+C to quit)
 WARNING:core.Middleware:Unauthorized access attempt from 127.0.0.1
-INFO:     127.0.0.1:39170 - "GET / HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:49858 - "GET / HTTP/1.1" 401 Unauthorized
+INFO:core.Middleware:Authorized access from 127.0.0.1
+INFO:     127.0.0.1:33962 - "GET /sse HTTP/1.1" 200 OK
+INFO:core.Middleware:Authorized access from 127.0.0.1
+INFO:     127.0.0.1:33976 - "POST /messages/?session_id=0f16964ce4504e98bbe0a5c24bb84877 HTTP/1.1" 202 Accepted
+INFO:core.Middleware:Authorized access from 127.0.0.1
+INFO:     127.0.0.1:33976 - "POST /messages/?session_id=0f16964ce4504e98bbe0a5c24bb84877 HTTP/1.1" 202 Accepted
+INFO:core.Middleware:Authorized access from 127.0.0.1
+INFO:     127.0.0.1:33976 - "POST /messages/?session_id=0f16964ce4504e98bbe0a5c24bb84877 HTTP/1.1" 202 Accepted
+INFO:mcp.server.lowlevel.server:Processing request of type CallToolRequest
+WARNING:ddgs.ddgs:KeyError('html') - backend is not exist or disabled. Available: brave, duckduckgo, google, grokipedia, mojeek, wikipedia, yahoo, yandex. Using 'auto'
+WARNING:primp.impersonate:Impersonate 'chrome_101' does not exist, using 'random'
+INFO:primp:response: https://en.wikipedia.org/w/api.php?action=opensearch&profile=fuzzy&limit=1&search=zkzkAgent 200
+INFO:primp:response: https://grokipedia.com/api/typeahead?query=zkzkAgent&limit=1 200
+INFO:ddgs.ddgs:Error in engine google: DDGSException("HTTPError: HTTPError('HTTP 403 Forbidden for URL: https://www.google.com/search?q=zkzkAgent&filter=1&start=0&hl=en-US&lr=lang_en&cr=countryUS', 403, 'https://www.google.com/search?q=zkzkAgent&filter=1&start=0&hl=en-US&lr=lang_en&cr=countryUS', 'Forbidden')")
+INFO:primp:response: https://search.yahoo.com/search;_ylt=Njd5MdvyE9fI55GE4QvlaPLH;_ylu=XHN-dTrvjCjBDYHc1nod3RZmZBidNVtGFJe-4R8Nv0kJTDU?p=zkzkAgent 200
+INFO:tools.search_web.duckduckgo:DuckDuckGo search succeeded using backend: html
+INFO:tools.search_web.duckduckgo:DuckDuckGo: 2 results for 'zkzkAgent'
+INFO:core.Middleware:Authorized access from 127.0.0.1
+INFO:     127.0.0.1:33976 - "POST /messages/?session_id=0f16964ce4504e98bbe0a5c24bb84877 HTTP/1.1" 202 Accepted
+INFO:mcp.server.lowlevel.server:Processing request of type ListToolsRequest

@@ -7,7 +7,6 @@ It includes functionalities for querying search engines, processing search resul
 
 from .duckduckgo import duckduckgo_search
 
-# Backward-compatible alias for older package-level imports.
 search_web = duckduckgo_search
 
 __all__ = ["duckduckgo_search", "search_web"]

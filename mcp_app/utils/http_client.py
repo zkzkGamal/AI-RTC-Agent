@@ -14,10 +14,9 @@ import httpx
 
 from .exceptions import ExternalAPIError, RateLimitError
 
-# ── Config ────────────────────────────────────────────────────────────────────
-TIMEOUT         = 10.0   # seconds per request
+TIMEOUT         = 10.0
 MAX_RETRIES     = 3
-RETRY_BACKOFF   = 2.0    # seconds between retries (doubles each attempt)
+RETRY_BACKOFF   = 2.0
 
 DEFAULT_HEADERS = {
     "User-Agent":   "AI-RTC-Agent/1.0",
@@ -26,7 +25,6 @@ DEFAULT_HEADERS = {
 }
 
 
-# ── Internal retry logic ──────────────────────────────────────────────────────
 async def _request(
     method:  str,
     url:     str,
@@ -41,12 +39,10 @@ async def _request(
             try:
                 response = await client.request(method, url, headers=headers, **kwargs)
 
-                # ── Rate limited ──────────────────────────────────────────────
                 if response.status_code == 429:
                     retry_after = int(response.headers.get("Retry-After", 60))
                     raise RateLimitError(tool_name=tool_name, retry_after=retry_after)
 
-                # ── Auth errors — no point retrying ──────────────────────────
                 if response.status_code in (401, 403):
                     raise ExternalAPIError(
                         message="Authentication failed. Check your credentials.",
@@ -54,7 +50,6 @@ async def _request(
                         status_code=response.status_code,
                     )
 
-                # ── Server errors — retry ─────────────────────────────────────
                 if response.status_code >= 500:
                     raise httpx.HTTPStatusError(
                         message=str(response.status_code),
@@ -62,7 +57,6 @@ async def _request(
                         response=response,
                     )
 
-                # ── Success ───────────────────────────────────────────────────
                 response.raise_for_status()
                 return response.json()
 
@@ -77,7 +71,7 @@ async def _request(
                 await asyncio.sleep(RETRY_BACKOFF * attempt)
 
             except (RateLimitError, ExternalAPIError):
-                raise  # never retry these
+                raise
 
 
 async def get(url: str, tool_name: str = "http_client", **kwargs) -> dict:

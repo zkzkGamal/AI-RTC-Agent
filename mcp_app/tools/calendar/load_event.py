@@ -14,7 +14,7 @@ try:
 except ModuleNotFoundError:
     from utils import ok, from_exception
     from utils.rate_limiter import rate_limiter
-    
+
 from service.CalnderService import calendar_service
 from service.CalendarICSService import calender_ics_service
 from service.CalendarGoogleService import google_calendar_service

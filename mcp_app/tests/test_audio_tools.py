@@ -1,3 +1,5 @@
+"""Tests for audio_tools."""
+
 import importlib
 
 import pytest

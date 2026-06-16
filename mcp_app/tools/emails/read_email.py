@@ -30,7 +30,6 @@ load_dotenv(dotenv_path=Path(__file__).resolve().parents[2] / ".env")
 GMAIL_API = os.getenv("GMAIL_API_URL", "https://gmail.googleapis.com/gmail/v1/users/me")
 
 
-
 @mcp.tool()
 async def read_email(email_id: str) -> dict:
     """
@@ -56,7 +55,6 @@ async def read_email(email_id: str) -> dict:
             data    = res.json()
             headers = {h["name"]: h["value"] for h in data["payload"]["headers"]}
 
-            # extract body — check parts first, fallback to payload
             body = ""
             parts = data["payload"].get("parts", [])
             if parts:

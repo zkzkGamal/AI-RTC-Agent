@@ -31,28 +31,25 @@ class audio_service:
             Transcribed text from the audio input.
         """
         self.model_service = load_model_service
-    
+
     def _decode_audio(self , audio_bytes: bytes | str) -> bytes:
         """
         Normalize audio input to raw bytes.
         Handles: raw bytes, base64 string, base64 bytes.
         """
         try:
-            # String input — try base64 decode first
             if isinstance(audio_bytes, str):
                 try:
                     return base64.b64decode(audio_bytes)
                 except Exception:
                     return audio_bytes.encode("utf-8")
 
-            # Bytes that look like base64-encoded WAV (starts with b"UklGR" = "RIFF" in b64)
             if audio_bytes.startswith(b"UklGR"):
                 try:
                     return base64.b64decode(audio_bytes)
                 except Exception:
                     return audio_bytes
 
-            # Bytes that don't start with RIFF — might still be base64
             if not audio_bytes.startswith(b"RIFF"):
                 try:
                     decoded = base64.b64decode(audio_bytes)
@@ -65,7 +62,7 @@ class audio_service:
         except Exception as e:
             logger.error(f"Failed to decode audio: {e}")
             raise ValueError(f"Could not decode audio due to: {e}")
-        
+
     def _transcribe_sync(self , audio_bytes: bytes | str) -> str:
         """
         Sync Whisper transcription — runs in a thread via asyncio.to_thread.

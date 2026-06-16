@@ -11,7 +11,6 @@ from .send_mail import send_email
 from .read_email import read_email
 from .reply_to_email import reply_to_email
 
-# Backward-compatible alias for older imports.
 check_inbox = list_inbox
 
 __all__ = [

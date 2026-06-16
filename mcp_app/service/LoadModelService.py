@@ -1,3 +1,5 @@
+"""mcp_app.service.LoadModelService module."""
+
 import logging
 
 logger = logging.getLogger(__name__)

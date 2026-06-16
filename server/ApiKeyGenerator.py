@@ -1,3 +1,5 @@
+"""server.ApiKeyGenerator module."""
+
 import datetime
 import math
 import time

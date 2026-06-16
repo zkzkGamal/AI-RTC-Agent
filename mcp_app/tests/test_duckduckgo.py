@@ -1,3 +1,5 @@
+"""Tests for duckduckgo."""
+
 import importlib
 import pytest
 

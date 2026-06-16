@@ -41,7 +41,6 @@ _START_TIME = None
 _COUNTS     = {"passed": 0, "failed": 0, "skipped": 0, "error": 0}
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
 def _c(text: str, *codes: str) -> str:
     """Wrap text in ANSI codes (no-op if not a TTY)."""
     if not IS_TTY:
@@ -79,7 +78,6 @@ def _bar(passed: int, failed: int, skipped: int, total: int, width: int = 30) ->
     return f"[{bar}]"
 
 
-# ── Spinner ───────────────────────────────────────────────────────────────────
 class _Spinner:
     FRAMES  = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
     COLORS  = [CYAN, BLUE, MAGENTA, CYAN]
@@ -95,7 +93,7 @@ class _Spinner:
         return _c(frame, self.COLORS[idx % len(self.COLORS)], BOLD)
 
     def start(self):
-        time.sleep(0.75)  # slight delay before showing spinner
+        time.sleep(0.75)
 
         if not IS_TTY:
             mod = f"{_c(self.module, DIM)} " if self.module else ""
@@ -145,7 +143,6 @@ class _Spinner:
             print(f"  [{tag}] {self.label}  ({dur_str})", flush=True)
 
 
-# ── Session header ────────────────────────────────────────────────────────────
 def _print_header(session):
     total  = session.testscollected
     border = _c("─" * 60, DIM)
@@ -158,7 +155,6 @@ def _print_header(session):
     print()
 
 
-# ── Session footer ────────────────────────────────────────────────────────────
 def _print_footer():
     total    = sum(_COUNTS.values())
     elapsed  = time.monotonic() - _START_TIME if _START_TIME else 0
@@ -186,7 +182,6 @@ def _print_footer():
     print()
 
 
-# ── Hooks ─────────────────────────────────────────────────────────────────────
 def pytest_configure(config):
     config.option.capture = "no"
 

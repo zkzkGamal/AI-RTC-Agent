@@ -1,4 +1,5 @@
-# core/auth.py
+"""agent.core.auth module."""
+
 import datetime
 import math
 import time

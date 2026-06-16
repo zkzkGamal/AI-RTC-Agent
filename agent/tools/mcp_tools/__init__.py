@@ -1,3 +1,5 @@
+"""MCP tool wrappers exposed to the agent's LLM."""
+
 from .duckduckgo_search import duckduckgo_search
 from .list_inbox import list_inbox
 from .read_email import read_email

@@ -1,3 +1,5 @@
+"""Agent-facing tool wrappers that proxy to the MCP server."""
+
 from .mcp_tools import (
     duckduckgo_search,
     list_inbox,
