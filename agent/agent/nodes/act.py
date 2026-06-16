@@ -183,25 +183,36 @@ Return ONLY the final updated JSON dictionary. Do not include any explanation, b
                 llm_response = await llm.ainvoke([SystemMessage(content=system_prompt)])
                 content = llm_response.content.strip()
 
-                import re
                 json_match = re.search(r'\{.*\}', content, re.DOTALL)
-                if json_match:
-                    json_str = json_match.group(0)
-                else:
-                    json_str = content
+                json_str = json_match.group(0) if json_match else content
 
                 updated_args = json.loads(json_str)
                 logger.info(f"[execute] Updated tool arguments: {updated_args}")
-
-                tool_instance = _TOOL_MAP[tool_name]
-                await emit_tool_event(tool_name, "start", {"arguments": updated_args})
-                result = await tool_instance.ainvoke(updated_args)
-                await emit_tool_event(tool_name, "finished", {"result": str(result)})
             except Exception as e:
-                logger.error(f"[execute] Failed to modify tool arguments: {e}. Raw response: {content}")
-                result = f"Error: Failed to apply modifications: {e}"
+                logger.error(f"[execute] Failed to modify tool arguments: {e}. Keeping original arguments.")
+                updated_args = tool_args
 
-        elif is_approved:
+            pending = {
+                "tool_name": tool_name,
+                "arguments": updated_args,
+                "id": tool_call_id,
+            }
+
+            args_str = ""
+            for k, v in updated_args.items():
+                if isinstance(v, list):
+                    v = ", ".join(map(str, v))
+                args_str += f"{k}:{v}\n"
+            pretty_message = f"the response {tool_name} the agrs is\n{args_str.strip()}"
+            messages.append(AIMessage(content=pretty_message))
+
+            return {
+                "messages": messages,
+                "pending_confirmation": pending,
+                "tool_results": pretty_message,
+            }
+
+        if is_approved:
             try:
                 tool_instance = _TOOL_MAP[tool_name]
                 logger.info(f"[execute] Tool execution APPROVED. Calling tool '{tool_name}'...")
