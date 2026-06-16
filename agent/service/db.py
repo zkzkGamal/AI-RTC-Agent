@@ -39,9 +39,83 @@ def init_db():
         FOREIGN KEY (session_id) REFERENCES sessions(session_id)
     )
     """)
-    
+
+    # Create cv_memory table (one CV "knowledge" record per user, latest wins)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS cv_memory (
+        user_id TEXT PRIMARY KEY,
+        file_name TEXT,
+        file_path TEXT,
+        keywords TEXT,      -- JSON list of extracted keywords
+        knowledge TEXT,     -- JSON dict of structured CV knowledge
+        summary TEXT,       -- short human-readable summary
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
     conn.commit()
     conn.close()
+
+def save_cv_memory(
+    user_id: str,
+    file_name: str,
+    file_path: str,
+    keywords: List[str],
+    knowledge: Dict[str, Any],
+    summary: str = "",
+):
+    """Persist (or replace) the extracted CV knowledge for a user."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+    INSERT INTO cv_memory (user_id, file_name, file_path, keywords, knowledge, summary, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(user_id) DO UPDATE SET
+        file_name = excluded.file_name,
+        file_path = excluded.file_path,
+        keywords  = excluded.keywords,
+        knowledge = excluded.knowledge,
+        summary   = excluded.summary,
+        updated_at = CURRENT_TIMESTAMP
+    """, (
+        user_id,
+        file_name,
+        file_path,
+        json.dumps(keywords or []),
+        json.dumps(knowledge or {}),
+        summary or "",
+    ))
+    conn.commit()
+    conn.close()
+
+def get_cv_memory(user_id: str) -> Optional[Dict[str, Any]]:
+    """Return the stored CV knowledge for a user, or None."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT user_id, file_name, file_path, keywords, knowledge, summary, updated_at
+    FROM cv_memory WHERE user_id = ?
+    """, (user_id,))
+    r = cursor.fetchone()
+    conn.close()
+    if not r:
+        return None
+
+    def _loads(value, default):
+        try:
+            return json.loads(value) if value else default
+        except Exception:
+            return default
+
+    return {
+        "user_id": r["user_id"],
+        "file_name": r["file_name"],
+        "file_path": r["file_path"],
+        "keywords": _loads(r["keywords"], []),
+        "knowledge": _loads(r["knowledge"], {}),
+        "summary": r["summary"] or "",
+        "updated_at": r["updated_at"],
+    }
 
 def save_session(session_id: str, user_id: str, pending_confirmation: Optional[Dict[str, Any]] = None):
     conn = get_db_connection()

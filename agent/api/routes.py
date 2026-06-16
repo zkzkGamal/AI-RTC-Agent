@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from agent.service.chat import Chat
 
@@ -21,6 +21,14 @@ class ChatResponse(BaseModel):
     messages_count: int
 
 
+class CvUploadResponse(BaseModel):
+    user_id: str
+    file_name: str
+    keywords: List[str]
+    summary: str
+    knowledge: Dict[str, Any]
+
+
 def register_routes(app: FastAPI) -> None:
     @app.post("/api/chat", response_model=ChatResponse)
     async def chat_endpoint(payload: ChatRequest):
@@ -31,6 +39,29 @@ def register_routes(app: FastAPI) -> None:
                 message=payload.message,
             )
             return result
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=str(exc))
+
+    @app.post("/api/cv/upload", response_model=CvUploadResponse)
+    async def upload_cv_endpoint(
+        user_id: str = Form(...),
+        file: UploadFile = File(...),
+    ):
+        """
+        Accept a candidate CV (PDF / Word / Markdown), save it into the global
+        content/ folder, read it, extract keywords + knowledge, and store it as
+        the user's CV memory so the agent can answer based on it.
+        """
+        try:
+            data = await file.read()
+            result = await chat_service.ingest_cv_upload(
+                user_id=user_id,
+                filename=file.filename,
+                data=data,
+            )
+            return result
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
         except Exception as exc:
             raise HTTPException(status_code=500, detail=str(exc))
 

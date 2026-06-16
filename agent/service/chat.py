@@ -13,6 +13,12 @@ from agent.service.db import (
     get_messages_by_session,
     get_sessions_by_user
 )
+from agent.service.cv_memory import (
+    ingest_cv,
+    cv_memory_system_message,
+    window_messages,
+)
+from core.content_store import save_bytes, read_document
 
 logger = logging.getLogger(__name__)
 
@@ -63,15 +69,17 @@ class Chat:
             elif role == "tool":
                 lc_messages.append(ToolMessage(content=content, name=name, tool_call_id=tool_call_id))
 
-        # 4. Set context variables for Socket.IO event emission inside nodes
+        agent_messages = window_messages(lc_messages)
+        cv_message = cv_memory_system_message(user_id)
+        if cv_message is not None:
+            agent_messages = [cv_message] + agent_messages
+
         token_user = active_user_id.set(user_id)
         token_session = active_session_id.set(session_id)
 
         try:
-            # Prepare initial agent state
-            # Note: We pass the pending_confirmation if there was one
             state = {
-                "messages": lc_messages,
+                "messages": agent_messages,
                 "user_message": message,
                 "route": None,
                 "plan": None,
@@ -85,8 +93,8 @@ class Chat:
             result = await graph.ainvoke(state)
 
             # 5. Extract and save NEW messages generated during this graph execution
-            # The new messages are those appended after the original history we passed in
-            new_messages = result["messages"][len(lc_messages):]
+            # The new messages are those appended after the windowed history we passed in
+            new_messages = result["messages"][len(agent_messages):]
             for msg in new_messages:
                 role = "system"
                 name = None
@@ -138,6 +146,33 @@ class Chat:
             # Reset context variables
             active_user_id.reset(token_user)
             active_session_id.reset(token_session)
+
+    async def ingest_cv_upload(self, user_id: str, filename: str, data: bytes) -> Dict[str, Any]:
+        """
+        Save an uploaded CV into the global content/ folder, read it (PDF/Word/MD),
+        extract keywords + structured knowledge via the LLM, and persist it as the
+        user's CV memory. Returns the extracted profile for the frontend.
+        """
+        if not data:
+            raise ValueError("Uploaded file is empty.")
+
+        saved_path = save_bytes(filename, data)          # validates supported type
+        cv_text = read_document(str(saved_path))         # PDF / Word / Markdown only
+
+        result = await ingest_cv(
+            user_id=user_id,
+            file_name=saved_path.name,
+            file_path=str(saved_path),
+            cv_text=cv_text,
+        )
+        logger.info(f"Ingested CV '{saved_path.name}' for user '{user_id}'.")
+        return {
+            "user_id": user_id,
+            "file_name": result["file_name"],
+            "keywords": result["keywords"],
+            "summary": result["summary"],
+            "knowledge": result["knowledge"],
+        }
 
     def get_user_sessions(self, user_id: str) -> List[Dict[str, Any]]:
         """Retrieve all sessions belonging to a user ID."""

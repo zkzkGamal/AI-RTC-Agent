@@ -7,12 +7,13 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import './App.css';
 
 // Services
-import { 
-  createSession, 
-  sendOffer, 
-  sendChatMessage, 
-  getUserSessions, 
-  getSessionMessages 
+import {
+  createSession,
+  sendOffer,
+  sendChatMessage,
+  getUserSessions,
+  getSessionMessages,
+  uploadCv
 } from './services/api';
 import { createConnection, applyAnswer, closeConnection } from './services/webrtc';
 import { 
@@ -26,6 +27,7 @@ import {
 import AudioVisualizer from './components/AudioVisualizer';
 import StatusDisplay from './components/StatusDisplay';
 import ControlButtons from './components/ControlButtons';
+import Markdown from './components/Markdown';
 
 // Helper to clean up "Resolved Message:" and surrounding quotes from agent responses
 const cleanResolvedMessage = (text) => {
@@ -65,9 +67,13 @@ export default function App() {
   const [typedMessage, setTypedMessage] = useState('');
   const [feedbackText, setFeedbackText] = useState('');
 
+  // ── CV upload state ──
+  const [isUploadingCv, setIsUploadingCv] = useState(false);
+
   // ── Refs ──
   const pcRef = useRef(null);
   const streamRef = useRef(null);
+  const cvInputRef = useRef(null);
   const timelineEndRef = useRef(null);
   const agentSessionIdRef = useRef(agentSessionId);
   const sessionsListRef = useRef(sessionsList);
@@ -241,6 +247,61 @@ export default function App() {
     if (!typedMessage.trim()) return;
     sendMessageToAgent(typedMessage);
     setTypedMessage('');
+  };
+
+  // ── CV Upload (saved to content/ folder, parsed into CV memory) ──
+  const handleCvSelected = async (e) => {
+    const file = e.target.files?.[0];
+    // Reset the input so the same file can be re-selected later.
+    e.target.value = '';
+    if (!file) return;
+
+    setError(null);
+    setIsUploadingCv(true);
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setMessages((prev) => [...prev, {
+      id: 'cv-' + Date.now(),
+      sender: 'candidate',
+      text: `📎 Uploaded CV: ${file.name}`,
+      timestamp,
+    }]);
+
+    try {
+      const profile = await uploadCv(userId, file);
+      const kw = (profile.keywords || []).slice(0, 12).join(', ');
+      setMessages((prev) => [...prev, {
+        id: 'cv-ack-' + Date.now(),
+        sender: 'agent',
+        text: `✅ CV processed: ${profile.file_name}.` +
+          (profile.summary ? `\n${profile.summary}` : '') +
+          (kw ? `\nKey skills: ${kw}` : ''),
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }]);
+      // Let the agent respond based on the freshly stored CV knowledge.
+      sendMessageToAgent(`I just uploaded my CV (${file.name}). Please review it and tell me what stands out.`);
+    } catch (err) {
+      console.error('CV upload error:', err);
+      setError(`CV upload failed: ${err.message}`);
+    } finally {
+      setIsUploadingCv(false);
+    }
+  };
+
+  // ── Human-in-the-Loop confirmation actions ──
+  // These send a confirmation response back to the agent, which resumes the
+  // pending tool in act.py based on the message text (approve / reject / modify).
+  const handleApproveTool = () => {
+    sendMessageToAgent('approve');
+  };
+
+  const handleRejectTool = () => {
+    sendMessageToAgent('reject');
+  };
+
+  const handleModifyTool = (text) => {
+    if (text && text.trim()) {
+      sendMessageToAgent(text);
+    }
   };
 
   // ── WebRTC Connection State Handler ──
@@ -494,7 +555,9 @@ export default function App() {
                       <span className="item-time">{m.timestamp}</span>
                     </div>
                     <div className="item-content">
-                      <p>{m.text}</p>
+                      {m.sender === 'agent'
+                        ? <Markdown text={m.text} />
+                        : <p>{m.text}</p>}
                     </div>
                   </div>
                 ))}
@@ -592,6 +655,22 @@ export default function App() {
 
           {/* Text Input Fallback Composer */}
           <form onSubmit={handleSendText} className="chat-composer-form">
+            <input
+              ref={cvInputRef}
+              type="file"
+              accept=".pdf,.doc,.docx,.md,.markdown,.txt"
+              onChange={handleCvSelected}
+              style={{ display: 'none' }}
+            />
+            <button
+              type="button"
+              className="chat-composer-submit"
+              onClick={() => cvInputRef.current?.click()}
+              disabled={isAgentThinking || isUploadingCv}
+              title="Upload CV (PDF, Word, or Markdown)"
+            >
+              {isUploadingCv ? '⏳' : '📎 CV'}
+            </button>
             <input
               type="text"
               value={typedMessage}

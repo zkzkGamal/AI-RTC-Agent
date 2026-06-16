@@ -2,30 +2,7 @@
 > voice-ai-agent-client@0.1.0 dev
 > vite
 
-node:internal/fs/watchers:316
-    const error = new UVException({
-                  ^
 
-Error: ENOSPC: System limit for number of file watchers reached, watch '/home/zkzk/ai/AI-RTC-Agent/client/vite.config.js'
-    at FSWatcher.<computed> (node:internal/fs/watchers:316:19)
-    at Object.watch (node:fs:2522:36)
-    at createFsWatchInstance (file:///home/zkzk/ai/AI-RTC-Agent/client/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:42780:17)
-    at setFsWatchListener (file:///home/zkzk/ai/AI-RTC-Agent/client/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:42827:15)
-    at NodeFsHandler._watchWithNodeFs (file:///home/zkzk/ai/AI-RTC-Agent/client/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:42982:14)
-    at NodeFsHandler._handleFile (file:///home/zkzk/ai/AI-RTC-Agent/client/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:43046:23)
-    at NodeFsHandler._addToNodeFs (file:///home/zkzk/ai/AI-RTC-Agent/client/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:43288:21)
-    at async file:///home/zkzk/ai/AI-RTC-Agent/client/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:44285:21
-    at async Promise.all (index 1)
-Emitted 'error' event on FSWatcher instance at:
-    at FSWatcher._handleError (file:///home/zkzk/ai/AI-RTC-Agent/client/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:44481:10)
-    at NodeFsHandler._addToNodeFs (file:///home/zkzk/ai/AI-RTC-Agent/client/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:43296:18)
-    at async file:///home/zkzk/ai/AI-RTC-Agent/client/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:44285:21
-    at async Promise.all (index 1) {
-  errno: -28,
-  syscall: 'watch',
-  code: 'ENOSPC',
-  path: '/home/zkzk/ai/AI-RTC-Agent/client/vite.config.js',
-  filename: '/home/zkzk/ai/AI-RTC-Agent/client/vite.config.js'
-}
+  VITE v5.4.21  ready in 112 ms
 
-Node.js v25.9.0
+  ➜  Local:   http://127.0.0.1:3001/

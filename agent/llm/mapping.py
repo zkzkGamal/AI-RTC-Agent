@@ -14,17 +14,18 @@ class LLM_Mapping:
         "gpt-3.5-turbo": ChatOpenAI,
         "gpt-4": ChatOpenAI,
         "gemini-2.5-flash": ChatGoogleGenerativeAI,
-        "qwen-3.5:4b": ChatOllama,
-        "qwen-3.5:0.8b": ChatOllama,
+        "qwen3.5:4b": ChatOllama,
+        "qwen3.5:0.8b": ChatOllama,
         "qwen3.5:4b": ChatOllama,
         "qwen3.5:0.8b": ChatOllama,
         "qwen3.5:2b-q4_K_M": ChatOllama,
         "qwen3.5:4b-q4_K_M": ChatOllama,
         "qwen3.5:6b-q4_K_M": ChatOllama,
         "qwen3.5:8b-q4_K_M": ChatOllama,
+        "qwen3-vl:4b-instruct-q4_K_M":ChatOllama,
     }
 
     @classmethod
     def get_llm_class(cls, model_name):
         """Return the LLM class corresponding to the given model name."""
-        return cls.mapping.get(model_name)
+        return cls.mapping.get(model_name, ChatOllama)

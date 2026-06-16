@@ -36,7 +36,6 @@ _CONV_TEMPLATE = ChatPromptTemplate.from_messages([
     ).to_messages(),
     ("human", "{user_message}"),
 ])
-_conv_chain = _CONV_TEMPLATE | llm
 
 _ACT_TEMPLATE = ChatPromptTemplate.from_messages([
     *_ACT_PARTIAL.format_prompt(
@@ -46,7 +45,6 @@ _ACT_TEMPLATE = ChatPromptTemplate.from_messages([
     ).to_messages(),
     ("human", "{user_message}"),
 ])
-_act_chain = _ACT_TEMPLATE | llm
 
 
 def conversation(state: dict) -> dict:
@@ -75,27 +73,38 @@ def conversation(state: dict) -> dict:
     last_route = state.get("last_route", "")
     last_tool_result = state.get("last_tool_result", "")
 
+    # The candidate's CV knowledge is carried in state["messages"]; the synthesis
+    # chains rebuild their own context, so re-inject it here as a leading system
+    # message. Without this the final answer cannot use the uploaded CV.
+    # Imported lazily to avoid a circular import via the agent.service package.
+    from agent.service.cv_memory import cv_message_from_history
+    cv_message = cv_message_from_history(messages)
+
     if route == "CONV":
         logger.info("[conversation] Processing direct conversation...")
-        response = _conv_chain.invoke({
-            "name": name,
-            "home": home,
-            "user_message": user_text,
-            "conversation_history": conversation_history,
-            "last_route": last_route,
-            "last_tool_result": last_tool_result,
-        })
+        prompt_messages = _CONV_TEMPLATE.format_messages(
+            name=name,
+            home=home,
+            user_message=user_text,
+            conversation_history=conversation_history,
+            last_route=last_route,
+            last_tool_result=last_tool_result,
+        )
     else:
         logger.info(f"[conversation] Synthesizing tool outputs for intent: {intent}")
         # If there is a plan, prepend it to the tool results for the actor synthesis
         combined_results = f"Plan:\n{plan}\n\nExecution Results:\n{tool_results}" if plan else tool_results
-        response = _act_chain.invoke({
-            "name": name,
-            "home": home,
-            "route": intent,
-            "user_message": user_text,
-            "tool_result": combined_results,
-        })
+        prompt_messages = _ACT_TEMPLATE.format_messages(
+            name=name,
+            home=home,
+            route=intent,
+            user_message=user_text,
+            tool_result=combined_results,
+        )
+
+    if cv_message is not None:
+        prompt_messages = [cv_message] + prompt_messages
+    response = llm.invoke(prompt_messages)
 
     final_message = response.content.strip()
 

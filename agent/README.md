@@ -78,3 +78,53 @@ MODEL_TYPE=ollama        # options: ollama, openai, google
 LLM_MODEL=qwen3.5:0.8b   # model identifier
 OLLAMA_BASE_URL=http://localhost:11434
 ```
+
+---
+
+## 📄 HR Mode: CV Memory & the `content/` Folder
+
+When `AGENT_MODE=hr`, the agent gains a CV-aware workflow: candidates can upload a
+résumé (or drop one into a shared folder) and the agent answers questions grounded
+in that CV.
+
+### The global `content/` folder
+A single `content/` directory at the **project root** is the source of truth for all
+reference documents. Uploaded CVs are saved here, and the agent looks here when a
+user only *mentions* a CV by name in the CLI/chat. The folder is kept in git
+(`.gitkeep`) while its contents are ignored.
+
+### Reading CVs (`readcv` tool — PDF, Word & Markdown only)
+The `readcv` tool (registered only in `hr` mode) reads documents directly from
+`content/`. Supported types are **PDF (`pypdf`)**, **Word (`.docx`, `python-docx`)**,
+and **Markdown/text** — anything else is rejected. Resolution is flexible:
+
+| `file_path` argument | Behaviour |
+| --- | --- |
+| `""` (empty) | Reads the most recently uploaded document |
+| `"cv.pdf"` | Exact match inside `content/` |
+| `"cv"` | Fuzzy match on the file stem (e.g. → `my_cv.pdf`) |
+| absolute path | Used as-is |
+
+### CV memory (`langchain_classic.memory`)
+On upload the CV text is sent to the LLM, which extracts **exact keywords** plus
+structured knowledge (name, title, skills, experience, education). This profile is
+persisted per user in the `cv_memory` SQLite table and injected as a system message
+on every turn, so the agent can always answer from the candidate's CV.
+
+The running chat history is trimmed to the **last 3 messages** using
+`ConversationBufferWindowMemory(k=3)`, keeping the prompt small while CV knowledge
+stays available via the injected memory.
+
+### Upload endpoint
+```http
+POST /api/cv/upload      (multipart/form-data)
+  user_id : string
+  file    : PDF | .docx | .md
+→ { user_id, file_name, summary, keywords[], knowledge{} }
+```
+The React client exposes this via the **📎 CV** button next to the chat composer; the
+file is saved to `content/`, parsed, stored as CV memory, and the agent immediately
+reviews it.
+
+> **Dependencies**: this feature adds `pypdf`, `python-docx`, and `python-multipart`
+> (see `requirements.txt`).

@@ -12,6 +12,7 @@ A premium, state-of-the-art React web interface styled for modern HR recruitment
   - **Left Panel (Control Center)**: Features media connection status toggles, candidate credentials, real-time parameters, and interactive visualizers.
   - **Right Panel (Live Interview Timeline)**: Renders a scrollable conversational feed containing historical candidate dialogue blocks.
 - **WebRTC Data Channel Integration**: Automatically establishes an out-of-band `'transcript'` `DataChannel` upon starting the connection, receiving back-channel text transcripts dynamically pushed by the backend.
+- **CV Upload (HR Mode)**: A **📎 CV** button beside the chat composer uploads a candidate résumé (PDF, Word, or Markdown) to the agent. The file is parsed into a persistent CV memory and the agent immediately reviews it — replies are then grounded in the candidate's CV.
 - **Auto-Scrolling Dialog Timeline**: Displays transcripts chronologically without overwriting. Each transcript block includes:
   - Precise timestamp rendering (e.g. `10:32:15 AM`) based on local user time.
   - Segment index badge (e.g. `Segment #1`) for conversational auditing.
@@ -122,6 +123,8 @@ App.jsx (Main Layout + Timeline Log State)
 | :--- | :--- | :--- |
 | `createSession()` | `GET /session` | Initializes a unique session on the signaling backend, returning a UUID. |
 | `sendOffer(id, offer)` | `POST /session/{id}/offer` | Sends the local WebRTC Session Description Protocol (SDP) offer and returns the server's answering SDP. |
+| `sendChatMessage(userId, sessionId, message)` | `POST /api/chat` | Sends a text turn to the FastAPI agent (Port 8001) and returns its response + any pending HIL confirmation. |
+| `uploadCv(userId, file)` | `POST /api/cv/upload` | Uploads a candidate CV (PDF / Word / Markdown) to the agent's `content/` folder, parses it, and stores per-user CV memory. |
 
 ### `services/webrtc.js`
 

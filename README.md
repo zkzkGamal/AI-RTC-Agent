@@ -20,6 +20,7 @@ Watch the complete demonstration of the workspace, showing the initialization of
 - **Half-Duplex Turn-Based Mic Control**: Prevents echo loops and noise interference. When the agent is thinking or replying, the browser microphone is automatically muted and local recording is paused.
 - **Real-Time Socket.IO Badges**: The FastAPI Agent broadcasts live state events (`tool_start`, `tool_finished`) to the client over Socket.IO (Port 8001). The frontend displays immediate execution indicators (e.g. *"Searching DuckDuckGo..."*, *"Creating Calendar Event..."*).
 - **Latency Optimization**: Local web search results are capped at a maximum of `2` hits, drastically reducing context bloat and speed-to-response lag.
+- **CV-Aware HR Mode**: In `AGENT_MODE=hr`, candidates upload a résumé (PDF / Word / Markdown) from the dashboard. The CV is saved to a shared `content/` folder, parsed, and the LLM extracts exact keywords + structured knowledge into a persistent per-user **CV memory** — while the running chat history is trimmed to the last 3 messages via `langchain_classic.memory`.
 - **Dynamic Time-Locked Authentication**: Secure, zero-database, timestamp-based authentication between microservices via custom dynamic API key headers.
 
 ---
@@ -117,7 +118,8 @@ AI-RTC-Agent/
 ├── client/          # Responsive Vite React frontend dashboard
 ├── server/          # Asynchronous WebRTC audio backend & VAD pipeline
 ├── agent/           # FastAPI LangGraph conversation & routing service (Port 8001)
-└── mcp_app/         # FastMCP server exposing Whisper, Email, Calendar, and Search tools (Port 8005)
+├── mcp_app/         # FastMCP server exposing Whisper, Email, Calendar, and Search tools (Port 8005)
+└── content/         # Shared drop folder for uploaded CVs / reference docs (HR mode)
 ```
 
 ### 1. Client ([client](file:///home/aloha-zkaria/AI-RTC-Agent/client))
@@ -132,8 +134,8 @@ An asynchronous high-throughput network engine built on `aiohttp` and `aiortc` t
 
 ### 3. Agent ([agent](file:///home/aloha-zkaria/AI-RTC-Agent/agent))
 The conversation brain that manages state routing, prompt generation, and LangGraph flow decisions.
-- **Core Tech**: LangGraph, LangChain, FastAPI, python-socketio.
-- **Key Features**: Classifies intent (WEB_SEARCH, GMAIL, CALENDAR, GENERAL), runs interactive command loops, coordinates MCP client calls, and broadcasts real-time socket events for tool execution.
+- **Core Tech**: LangGraph, LangChain, FastAPI, python-socketio, pypdf / python-docx (CV parsing).
+- **Key Features**: Classifies intent (WEB_SEARCH, GMAIL, CALENDAR, GENERAL), runs interactive command loops, coordinates MCP client calls, and broadcasts real-time socket events for tool execution. In `hr` mode it also parses uploaded CVs (`POST /api/cv/upload`) into a persistent per-user CV memory.
 
 ### 4. FastMCP Server ([mcp_app](file:///home/aloha-zkaria/AI-RTC-Agent/mcp_app))
 A decoupled server providing specialized local tools to the LLM.

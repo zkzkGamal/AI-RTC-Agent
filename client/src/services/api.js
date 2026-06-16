@@ -59,6 +59,33 @@ export async function sendChatMessage(userId, sessionId, message) {
 }
 
 /**
+ * Upload a candidate CV (PDF / Word / Markdown) to the agent. The file is saved
+ * into the global content/ folder, parsed, and its keywords + knowledge are stored
+ * as the user's CV memory so the agent can answer based on it.
+ * @param {string} userId
+ * @param {File} file
+ * @returns {Promise<{user_id: string, file_name: string, keywords: string[], summary: string, knowledge: object}>}
+ */
+export async function uploadCv(userId, file) {
+  const form = new FormData();
+  form.append('user_id', userId);
+  form.append('file', file);
+  const res = await fetch(`${AGENT_URL}/api/cv/upload`, {
+    method: 'POST',
+    body: form,
+  });
+  if (!res.ok) {
+    let detail = `CV upload failed: ${res.status}`;
+    try {
+      const err = await res.json();
+      if (err.detail) detail = err.detail;
+    } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
+/**
  * Fetch all sessions belonging to a user ID.
  * @param {string} userId
  * @returns {Promise<{sessions: Array<{session_id: string, user_id: string, pending_confirmation: any}>}>}

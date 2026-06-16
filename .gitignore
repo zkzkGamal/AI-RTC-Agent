@@ -84,3 +84,7 @@ htmlcov/
 
 credentials.json
 token.json
+
+# Uploaded CV / knowledge content (keep the folder, ignore its files)
+content/*
+!content/.gitkeep
