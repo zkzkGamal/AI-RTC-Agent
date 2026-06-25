@@ -3,17 +3,6 @@
 > vite
 
 
-  VITE v5.4.21  ready in 116 ms
+  VITE v5.4.21  ready in 117 ms
 
   ➜  Local:   http://127.0.0.1:3001/
-9:57:22 PM [vite] hmr update /src/components/StatusDisplay.jsx
-9:57:22 PM [vite] hmr update /src/App.jsx
-9:57:22 PM [vite] hmr update /src/components/AudioVisualizer.jsx
-9:57:22 PM [vite] hmr update /src/components/Markdown.jsx
-9:57:22 PM [vite] hmr update /src/components/ControlButtons.jsx
-9:57:22 PM [vite] hmr update /src/App.jsx
-9:57:22 PM [vite] hmr update /src/App.jsx
-9:57:22 PM [vite] page reload src/main.jsx
-9:57:22 PM [vite] hmr update /src/App.jsx
-9:57:22 PM [vite] vite.config.js changed, restarting server...
-9:57:22 PM [vite] server restarted.

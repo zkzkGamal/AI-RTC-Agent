@@ -126,17 +126,23 @@ INSTRUCTIONS
    - User Request: {user_text}
    - Classified Route: {route}
    - Business Intent: {intent}
-2. If the task has multiple steps (for example, "search tech news and email it"), you MUST call the tools sequentially:
+2. Call ONLY the tools that are directly required by THIS request. Do NOT call a tool the
+   user did not ask for. In particular, never list/read the inbox, draft, or send an email
+   unless the request is explicitly about email. The plan below is a suggestion — ignore any
+   step that is not actually needed to answer the user.
+3. If the task genuinely has multiple steps (for example, "search tech news and email it"),
+   call the tools sequentially:
    - Step 1: Call `duckduckgo_search` to find the news.
-   - Step 2: Once you receive the search results, call `send_email` to email the results to the requested address.
-3. The router already determined this request needs a tool. ALWAYS attempt the
-   appropriate tool for the CURRENT request. Earlier turns in this session may show
-   failed tool attempts or replies saying a tool was "unavailable" / "I can't search" —
-   those failures were temporary. NEVER refuse a tool-requiring task or answer from
-   memory just because a previous attempt failed. Try the tool again now.
-4. Do NOT call the same tool with the exact same arguments if it has already executed successfully in the conversation history. You should still proceed with subsequent steps and call other required tools sequentially (e.g. call search first, then call email with the search results).
-5. If a tool call fails or returns an error during THIS turn, do not loop indefinitely — try once more if reasonable, otherwise inform the user.
-6. Do not output a final text summary until all required tool executions are complete.
+   - Step 2: Once you receive the search results, call `send_email` to email the results.
+4. Earlier turns may show failed tool attempts or replies saying a tool was "unavailable" /
+   "I can't search" — those failures were temporary. Do not refuse a genuinely tool-requiring
+   task just because a previous attempt failed; try the tool again now.
+5. Do NOT call the same tool with the exact same arguments if it already executed successfully
+   in the conversation history.
+6. If a tool call fails or returns an error during THIS turn, do not loop indefinitely — try
+   once more if reasonable, otherwise inform the user.
+7. As soon as the request is satisfied, STOP calling tools and let the answer be synthesized.
+   Do not keep calling tools to "be thorough."
 
 {history_section}{plan_section}
 """

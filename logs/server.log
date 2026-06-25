@@ -1,4 +1,93 @@
 /home/zkzk/.local/lib/python3.12/site-packages/webrtcvad.py:1: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
   import pkg_resources
 INFO:__main__:Starting AI-RTC-Agent server on 0.0.0.0:8080
-INFO:aiohttp.access:127.0.0.1 [16/Jun/2026:20:49:49 +0200] "GET / HTTP/1.1" 404 174 "-" "curl/8.5.0"
+INFO:aiohttp.access:127.0.0.1 [23/Jun/2026:22:50:48 +0200] "GET / HTTP/1.1" 404 174 "-" "curl/8.5.0"
+INFO:__main__:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] Session created
+INFO:aiohttp.access:127.0.0.1 [23/Jun/2026:22:50:50 +0200] "GET /session HTTP/1.1" 200 364 "http://localhost:3001/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
+INFO:aiohttp.access:127.0.0.1 [23/Jun/2026:22:50:50 +0200] "OPTIONS /session/824e302a-0dc8-41d1-ac8c-b433a78c7e3c/offer HTTP/1.1" 200 283 "http://localhost:3001/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] AudioSession created (running in-memory only)
+INFO:__main__:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] Audio track received
+INFO:__main__:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] Audio track consumer started
+INFO:__main__:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] SDP answer sent
+INFO:aiohttp.access:127.0.0.1 [23/Jun/2026:22:50:50 +0200] "POST /session/824e302a-0dc8-41d1-ac8c-b433a78c7e3c/offer HTTP/1.1" 200 3170 "http://localhost:3001/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
+INFO:aioice.ice:Connection(0) Check CandidatePair(('192.168.100.7', 56653) -> ('192.168.100.7', 53248)) State.FROZEN -> State.WAITING
+INFO:aioice.ice:Connection(0) Check CandidatePair(('172.17.0.1', 47118) -> ('192.168.100.7', 53248)) State.FROZEN -> State.WAITING
+INFO:aioice.ice:Connection(0) Check CandidatePair(('192.168.100.7', 56653) -> ('197.50.30.187', 53248)) State.FROZEN -> State.WAITING
+INFO:__main__:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] Connection state: connecting
+INFO:aioice.ice:Connection(0) Check CandidatePair(('192.168.100.7', 56653) -> ('192.168.100.7', 53248)) State.WAITING -> State.IN_PROGRESS
+INFO:aioice.ice:Connection(0) Check CandidatePair(('192.168.100.7', 56653) -> ('192.168.100.7', 53248)) State.IN_PROGRESS -> State.SUCCEEDED
+INFO:aioice.ice:Connection(0) Check CandidatePair(('172.17.0.1', 47118) -> ('192.168.100.7', 53248)) State.WAITING -> State.FAILED
+INFO:aioice.ice:Connection(0) Check CandidatePair(('192.168.100.7', 56653) -> ('197.50.30.187', 53248)) State.WAITING -> State.FAILED
+INFO:aioice.ice:Connection(0) Check CandidatePair(('172.17.0.1', 47118) -> ('197.50.30.187', 53248)) State.FROZEN -> State.FAILED
+INFO:aioice.ice:Connection(0) ICE completed
+INFO:__main__:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] Connection state: connected
+INFO:__main__:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] DataChannel 'transcript' received
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] DataChannel bound to AudioSession
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] 🎙️  Speech onset detected (6/10 active)
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] 🎙️  Utterance #1 processed in memory (305,280 bytes / 3.18s)
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] 🔇  Silence detected (1.02s) → saved & reset
+INFO:httpx:HTTP Request: GET http://localhost:8005/sse "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:8005/messages/?session_id=1d259eb36c134be3b45cee199a34bfff "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: POST http://localhost:8005/messages/?session_id=1d259eb36c134be3b45cee199a34bfff "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: POST http://localhost:8005/messages/?session_id=1d259eb36c134be3b45cee199a34bfff "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: POST http://localhost:8005/messages/?session_id=1d259eb36c134be3b45cee199a34bfff "HTTP/1.1 202 Accepted"
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] MCP STT result: '{
+  "status": "ok",
+  "timestamp": "2026-06-23T20:50:55.720584+00:00",
+  "data": {
+    "text": "Hello, what's your name today?"
+  }
+}'
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] Sent transcript over DataChannel
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] 🎙️  Speech onset detected (6/10 active)
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] 🎙️  Utterance #2 processed in memory (336,960 bytes / 3.51s)
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] 🔇  Silence detected (1.02s) → saved & reset
+INFO:httpx:HTTP Request: GET http://localhost:8005/sse "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:8005/messages/?session_id=314551d6a3284cfea1020e8320aa24be "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: POST http://localhost:8005/messages/?session_id=314551d6a3284cfea1020e8320aa24be "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: POST http://localhost:8005/messages/?session_id=314551d6a3284cfea1020e8320aa24be "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: POST http://localhost:8005/messages/?session_id=314551d6a3284cfea1020e8320aa24be "HTTP/1.1 202 Accepted"
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] MCP STT result: '{
+  "status": "ok",
+  "timestamp": "2026-06-23T20:51:02.163662+00:00",
+  "data": {
+    "text": "OK,和كل عبد البتاحarcセ hehiy, تعليم اللي عبدى الفتاح을 س Schön coc My Dinner"
+  }
+}'
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] Sent transcript over DataChannel
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] 🎙️  Speech onset detected (6/10 active)
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] 🎙️  Utterance #3 processed in memory (671,040 bytes / 6.99s)
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] 🔇  Silence detected (1.02s) → saved & reset
+INFO:httpx:HTTP Request: GET http://localhost:8005/sse "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:8005/messages/?session_id=7277e05d2a1141f1bde216c6597ea3d8 "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: POST http://localhost:8005/messages/?session_id=7277e05d2a1141f1bde216c6597ea3d8 "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: POST http://localhost:8005/messages/?session_id=7277e05d2a1141f1bde216c6597ea3d8 "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: POST http://localhost:8005/messages/?session_id=7277e05d2a1141f1bde216c6597ea3d8 "HTTP/1.1 202 Accepted"
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] MCP STT result: '{
+  "status": "ok",
+  "timestamp": "2026-06-23T20:51:11.753131+00:00",
+  "data": {
+    "text": "Season."
+  }
+}'
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] Sent transcript over DataChannel
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] 🎙️  Speech onset detected (6/10 active)
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] 🎙️  Utterance #4 processed in memory (501,120 bytes / 5.22s)
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] 🔇  Silence detected (1.02s) → saved & reset
+INFO:httpx:HTTP Request: GET http://localhost:8005/sse "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:8005/messages/?session_id=3b45ae925a744c508bcaaf8324353b4c "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: POST http://localhost:8005/messages/?session_id=3b45ae925a744c508bcaaf8324353b4c "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: POST http://localhost:8005/messages/?session_id=3b45ae925a744c508bcaaf8324353b4c "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: POST http://localhost:8005/messages/?session_id=3b45ae925a744c508bcaaf8324353b4c "HTTP/1.1 202 Accepted"
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] MCP STT result: '{
+  "status": "ok",
+  "timestamp": "2026-06-23T20:51:19.529854+00:00",
+  "data": {
+    "text": "przez"
+  }
+}'
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] Sent transcript over DataChannel
+INFO:__main__:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] Audio track consumer ended
+INFO:audio_processor:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] AudioSession closed (total utterances: 4)
+INFO:__main__:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] Connection state: closed
+INFO:__main__:[824e302a-0dc8-41d1-ac8c-b433a78c7e3c] Cleaning up session

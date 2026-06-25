@@ -54,6 +54,11 @@ def route_after_router(state: AgentState) -> str:
     else:
         return "conversation"
 
+def route_after_planner(state: AgentState) -> str:
+    if state.get("skip_tools"):
+        return "conversation"
+    return "executor"
+
 def route_after_executor(state: AgentState) -> str:
     if state.get("pending_confirmation"):
         return END
@@ -78,7 +83,14 @@ workflow.add_conditional_edges(
     }
 )
 
-workflow.add_edge("planner", "executor")
+workflow.add_conditional_edges(
+    "planner",
+    route_after_planner,
+    {
+        "executor": "executor",
+        "conversation": "conversation",
+    }
+)
 
 workflow.add_conditional_edges(
     "executor",

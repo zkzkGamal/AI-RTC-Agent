@@ -38,6 +38,7 @@ class AgentState(TypedDict):
 
     pending_confirmation: Optional[Dict[str, Any]]
     plan: Optional[str]
+    skip_tools: Optional[bool]
 
     error: Optional[str]
 

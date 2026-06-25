@@ -20,10 +20,14 @@ messages:
         Instructions:
         1. Create a logical, step-by-step plan using ONLY the available tools listed above.
         2. Reference the specific tool names (e.g. duckduckgo_search, list_inbox) that should be executed at each step.
-        3. Keep the plan concise and action-oriented.
-        4. Do not execute the tools yourself. Only describe the steps.
+        3. Use the MINIMUM number of steps. Include a tool ONLY if it is directly required to fulfill THIS specific request.
+           - Do NOT add steps the user did not ask for (e.g. do not check the inbox, draft, or send an email unless the request is explicitly about email).
+           - If a single tool answers the request, output a single step.
+        4. If the request can be answered from general knowledge and needs NO tool at all (e.g. chit-chat, opinions, explanations, jokes, simple factual questions you can answer directly), output EXACTLY this single line and nothing else:
+           NO_TOOLS_NEEDED
+        5. Do not execute the tools yourself. Only describe the steps.
 
         Output format:
-        Provide a bulleted list of steps. Nothing else.
+        Provide a bulleted list of steps, OR the single token NO_TOOLS_NEEDED. Nothing else.
       input_variables:
         - user_message

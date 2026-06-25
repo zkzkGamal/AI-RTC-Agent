@@ -138,6 +138,131 @@ class Chat:
             active_user_id.reset(token_user)
             active_session_id.reset(token_session)
 
+    async def send_message_stream(self, user_id: str, session_id: Optional[str], message: str):
+        """
+        Streaming variant of send_message.
+
+        Async generator that yields:
+          - {"type": "token", "content": <str>}  for each token of the final
+            user-facing response (only the `conversation` node is streamed).
+          - {"type": "final", "session_id", "user_id", "response",
+             "pending_confirmation", "messages_count"} once the graph completes.
+
+        History tracking and DB persistence behave exactly like send_message.
+        """
+        if not session_id:
+            session_id = str(uuid.uuid4())
+            logger.info(f"Generated new session ID: {session_id} for user: {user_id}")
+
+        session = get_session(session_id)
+        if not session:
+            save_session(session_id, user_id)
+            session = {"session_id": session_id, "user_id": user_id, "pending_confirmation": None}
+
+        save_message(session_id, user_id, "human", message)
+
+        db_messages = get_messages_by_session(session_id)
+
+        lc_messages = []
+        for msg in db_messages:
+            role = msg["role"]
+            content = msg["content"]
+            name = msg.get("name")
+            tool_call_id = msg.get("tool_call_id")
+
+            if role == "human":
+                lc_messages.append(HumanMessage(content=content))
+            elif role == "ai":
+                lc_messages.append(AIMessage(content=content))
+            elif role == "system":
+                lc_messages.append(SystemMessage(content=content))
+            elif role == "tool":
+                lc_messages.append(ToolMessage(content=content, name=name, tool_call_id=tool_call_id))
+
+        agent_messages = window_messages(lc_messages)
+        cv_message = cv_memory_system_message(user_id)
+        if cv_message is not None:
+            agent_messages = [cv_message] + agent_messages
+
+        token_user = active_user_id.set(user_id)
+        token_session = active_session_id.set(session_id)
+
+        try:
+            state = {
+                "messages": agent_messages,
+                "user_message": message,
+                "route": None,
+                "plan": None,
+                "tool_calls": None,
+                "tool_results": None,
+                "pending_confirmation": session.get("pending_confirmation"),
+                "error": None
+            }
+
+            final_state = None
+            async for mode, chunk in graph.astream(state, stream_mode=["messages", "values"]):
+                if mode == "messages":
+                    msg_chunk, metadata = chunk
+                    if metadata.get("langgraph_node") == "conversation":
+                        content = getattr(msg_chunk, "content", "")
+                        if content:
+                            yield {"type": "token", "content": content}
+                else:  # "values" — full state snapshot per super-step
+                    final_state = chunk
+
+            result = final_state or {"messages": list(agent_messages)}
+
+            new_messages = result["messages"][len(agent_messages):]
+            for msg in new_messages:
+                role = "system"
+                name = None
+                tool_call_id = None
+
+                if isinstance(msg, HumanMessage):
+                    role = "human"
+                elif isinstance(msg, AIMessage):
+                    role = "ai"
+                elif isinstance(msg, SystemMessage):
+                    role = "system"
+                elif isinstance(msg, ToolMessage):
+                    role = "tool"
+                    name = getattr(msg, "name", None)
+                    tool_call_id = getattr(msg, "tool_call_id", None)
+
+                save_message(
+                    session_id=session_id,
+                    user_id=user_id,
+                    role=role,
+                    content=msg.content if isinstance(msg.content, str) else str(msg.content),
+                    name=name,
+                    tool_call_id=tool_call_id
+                )
+
+            new_pending = result.get("pending_confirmation")
+            save_session(session_id, user_id, pending_confirmation=new_pending)
+
+            final_response = ""
+            for msg in reversed(result["messages"]):
+                if isinstance(msg, AIMessage) and msg.content:
+                    final_response = msg.content
+                    break
+
+            yield {
+                "type": "final",
+                "session_id": session_id,
+                "user_id": user_id,
+                "response": final_response,
+                "pending_confirmation": new_pending,
+                "messages_count": len(result["messages"]),
+            }
+
+        except Exception as e:
+            logger.error(f"Error during agent streaming invocation: {e}", exc_info=True)
+            raise e
+        finally:
+            active_user_id.reset(token_user)
+            active_session_id.reset(token_session)
+
     async def ingest_cv_upload(self, user_id: str, filename: str, data: bytes) -> Dict[str, Any]:
         """
         Save an uploaded CV into the global content/ folder, read it (PDF/Word/MD),

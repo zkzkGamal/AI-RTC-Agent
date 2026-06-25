@@ -42,5 +42,9 @@ def planner(state: dict) -> dict:
     response = _planner_chain.invoke({"user_message": user_message})
     plan = response.content.strip()
 
+    if "NO_TOOLS_NEEDED" in plan.upper():
+        logger.info("[planner] No tools required for this request. Routing straight to conversation.")
+        return {"plan": "", "skip_tools": True}
+
     logger.info(f"[planner] Generated plan:\n{plan}")
-    return {"plan": plan}
+    return {"plan": plan, "skip_tools": False}

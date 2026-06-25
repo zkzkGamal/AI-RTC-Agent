@@ -163,9 +163,22 @@ if [ "$type_val" = "api" ]; then
     exec uvicorn main:socket_app --host 0.0.0.0 --port "$port" --workers "$workers"
 
 elif [ "$type_val" = "chat" ]; then
+    # Ask whether to stream with quiet output or full verbose logs
+    verbose_options=("quiet (clean chat)" "verbose (show logs)")
+    select_menu "Select log mode:" "${verbose_options[@]}"
+    verbose_idx=$?
+
+    verbose_flag=""
+    if [ "$verbose_idx" -eq 1 ]; then
+        verbose_flag="--verbose"
+    fi
+
+    clear
+    draw_logo
+    echo ""
     show_loading 1 "Loading chat environment"
     echo -e "\n\e[1;32m🚀 Launching CLI Chat...\e[0m\n"
-    exec python main.py chat
+    exec python main.py chat $verbose_flag
 
 elif [ "$type_val" = "test" ]; then
     # Scan tests directory
